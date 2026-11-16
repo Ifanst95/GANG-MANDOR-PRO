@@ -19,7 +19,7 @@ import {
   INITIAL_SITE_CONFIG,
   INITIAL_TRANSACTIONS,
 } from '../data/initialData';
-import { formatMonthYearFromDate, formatMonthYearFromKey, formatRupiah, getHouseOccupancyForPeriod, getHouseHeadNameForPeriod, getHouseDuesNominalForPeriod, getMonthKeyFromDate, parseIndonesianMonthYearToKey, INDONESIAN_MONTHS, isHouseVacant, isTransactionForHouse, isPureIuranTx, isTunggakanTx, isPeriodCoveredInDuesNote } from '../utils/helpers';
+import { formatMonthYearFromDate, formatMonthYearFromKey, formatRupiah, getHouseOccupancyForPeriod, getHouseHeadNameForPeriod, getHouseDuesNominalForPeriod, getMonthKeyFromDate, parseIndonesianMonthYearToKey, INDONESIAN_MONTHS, isHouseVacant, isTransactionForHouse, isPureIuranTx, isTunggakanTx, isBaksosFineTx, descMentionsPeriod, isPeriodCoveredInDuesNote, sortResidentsByBlock } from '../utils/helpers';
 import { parseAndNormalizeBackupJson } from '../utils/backupRestoreHelper';
 import {
   getIsFirestoreQuotaExceeded,
@@ -274,10 +274,11 @@ function loadInitialSnapshot(): PortalDatabasePayload {
         const syncedTransactions = ensureSeptemberDefaultTransactions(
           Array.isArray(parsed.transactions) ? parsed.transactions : INITIAL_TRANSACTIONS
         );
-        const validResidents =
+        const validResidents = sortResidentsByBlock(
           parsed.residents.length > 0 && parsed.residents[0].headName === 'Bambang Sutrisno'
             ? INITIAL_RESIDENTS
-            : parsed.residents;
+            : parsed.residents
+        );
         const customized = isStateDifferentFromInitial({
           ...parsed,
           residents: validResidents,
@@ -320,10 +321,11 @@ function loadInitialSnapshot(): PortalDatabasePayload {
     navigationMenus: sanitizeNavigationMenus(rawConfig.navigationMenus),
   };
   const rawResidents = readKey(STORAGE_KEYS.RESIDENTS, INITIAL_RESIDENTS);
-  const residents =
+  const residents = sortResidentsByBlock(
     rawResidents.length > 0 && rawResidents[0].headName === 'Bambang Sutrisno'
       ? INITIAL_RESIDENTS
-      : rawResidents;
+      : rawResidents
+  );
   const transactions = ensureSeptemberDefaultTransactions(
     readKey(STORAGE_KEYS.TRANSACTIONS, INITIAL_TRANSACTIONS)
   );
@@ -447,7 +449,9 @@ export function useStorage() {
           clean.siteConfig?.navigationMenus || dbStateRef.current.siteConfig?.navigationMenus
         ),
       },
-      residents: Array.isArray(clean.residents) ? clean.residents : dbStateRef.current.residents,
+      residents: sortResidentsByBlock(
+        Array.isArray(clean.residents) ? clean.residents : dbStateRef.current.residents
+      ),
       transactions: ensureSeptemberDefaultTransactions(
         Array.isArray(clean.transactions)
           ? clean.transactions
@@ -592,6 +596,9 @@ export function useStorage() {
     ) => {
       const current = dbStateRef.current;
       const changes = mutator(current);
+      if (changes.residents && Array.isArray(changes.residents)) {
+        changes.residents = sortResidentsByBlock(changes.residents);
+      }
       const nextRev = (Number(current.revision) || 0) + 1;
       const nowIso = new Date().toISOString();
 
@@ -1218,6 +1225,7 @@ export function useStorage() {
         const prevPaidDate = prevHistEntry?.paidDate || r.duesPaidDate || '';
 
         newPeriodHist[prevMonthKey] = {
+          ...(prevHistEntry || {}),
           occupancy: prevOccupancy,
           headName: prevHeadName,
           duesHeadNameOverride: prevDuesHeadName,
@@ -1401,7 +1409,7 @@ export function useStorage() {
 
   const addResident = (newHouse: ResidentHouse) => {
     commitLocalMutation((cur) => ({
-      residents: [newHouse, ...cur.residents],
+      residents: sortResidentsByBlock([newHouse, ...cur.residents]),
       baksosAgendas: computeSyncedBaksosAgendas(cur.baksosAgendas, newHouse),
     }));
   };
@@ -1446,7 +1454,7 @@ export function useStorage() {
       }
 
       return {
-        residents: cur.residents.map((h) => (h.id === stamped.id ? stamped : h)),
+        residents: sortResidentsByBlock(cur.residents.map((h) => (h.id === stamped.id ? stamped : h))),
         baksosAgendas: computeSyncedBaksosAgendas(cur.baksosAgendas, stamped),
       };
     });
@@ -1454,14 +1462,14 @@ export function useStorage() {
 
   const deleteResident = (houseId: string) => {
     commitLocalMutation((cur) => ({
-      residents: cur.residents.filter((h) => h.id !== houseId),
+      residents: sortResidentsByBlock(cur.residents.filter((h) => h.id !== houseId)),
     }));
   };
 
   const importResidents = (newHouses: ResidentHouse[], mode: 'replace' | 'merge') => {
     commitLocalMutation((cur) => {
       if (mode === 'replace') {
-        return { residents: newHouses };
+        return { residents: sortResidentsByBlock(newHouses) };
       }
       const map = new Map<string, ResidentHouse>();
       cur.residents.forEach((h) => map.set(h.blockNumber.toUpperCase(), h));
@@ -1471,7 +1479,7 @@ export function useStorage() {
           updatedAt: new Date().toISOString(),
         });
       });
-      return { residents: Array.from(map.values()) };
+      return { residents: sortResidentsByBlock(Array.from(map.values())) };
     });
   };
 
@@ -1516,7 +1524,7 @@ export function useStorage() {
       }
 
       return {
-        residents: Array.from(residentMap.values()),
+        residents: sortResidentsByBlock(Array.from(residentMap.values())),
         transactions: [...preparedTxs, ...cur.transactions],
         siteConfig: updatedConfig,
       };
@@ -1547,7 +1555,7 @@ export function useStorage() {
       };
 
       return {
-        residents: updatedResidentList,
+        residents: sortResidentsByBlock(updatedResidentList),
         transactions: preparedTxs.length > 0 ? [...preparedTxs, ...cur.transactions] : cur.transactions,
         siteConfig: updatedConfig,
       };
@@ -1592,7 +1600,7 @@ export function useStorage() {
       const txMonthKey = getMonthKeyFromDate(txToDelete.date);
       const txPeriodLabel = formatMonthYearFromKey(txMonthKey);
       const isPureIuran = isPureIuranTx(txToDelete);
-      const isBaksos = txToDelete.category === 'Denda Baksos' || (txToDelete.description || '').toLowerCase().includes('denda');
+      const isBaksos = isBaksosFineTx(txToDelete);
       const isTunggakan = isTunggakanTx(txToDelete);
 
       let updatedResidents = cur.residents;
@@ -1614,6 +1622,7 @@ export function useStorage() {
               updatedAt: new Date().toISOString(),
             };
             delete (updatedPeriodHist[txMonthKey] as any).settlementMonth;
+            delete (updatedPeriodHist[txMonthKey] as any).isArrearSettledLater;
           }
           if (updatedPeriodHist[txPeriodLabel]) {
             updatedPeriodHist[txPeriodLabel] = {
@@ -1624,6 +1633,7 @@ export function useStorage() {
               updatedAt: new Date().toISOString(),
             };
             delete (updatedPeriodHist[txPeriodLabel] as any).settlementMonth;
+            delete (updatedPeriodHist[txPeriodLabel] as any).isArrearSettledLater;
           }
           const isCurrentActive = targetHouse.duesMonthNote === txPeriodLabel || cur.siteConfig.duesCurrentMonth === txPeriodLabel;
           const updatedH: ResidentHouse = {
@@ -1639,10 +1649,17 @@ export function useStorage() {
           updatedResidents = cur.residents.map((h) => (h.id === updatedH.id ? updatedH : h));
         }
       } else if (isBaksos) {
-        // Batalkan pelunasan denda baksos di agenda
+        // Batalkan pelunasan denda baksos di agenda (baik bulan yang sama maupun pelunasan denda bulan lalu)
+        const revertedMonthKeys = new Set<string>();
         updatedAgendas = cur.baksosAgendas.map((ag) => {
           const aKey = getMonthKeyFromDate(ag.date);
-          if (aKey === txMonthKey && (ag.finesPaid?.[targetHouse.id] || (targetHouse.blockNumber && ag.finesPaid?.[targetHouse.blockNumber]))) {
+          const aLabel = aKey ? formatMonthYearFromKey(aKey) : '';
+          const mentionsAgendaMonth = aKey && aLabel ? descMentionsPeriod(txToDelete.description || '', aLabel, aKey) : false;
+          const mentionsAgendaTitle = Boolean(ag.title && (txToDelete.description || '').toLowerCase().includes(ag.title.toLowerCase()));
+          const isMatch = aKey === txMonthKey || mentionsAgendaMonth || mentionsAgendaTitle;
+
+          if (isMatch && (ag.finesPaid?.[targetHouse.id] || (targetHouse.blockNumber && ag.finesPaid?.[targetHouse.blockNumber]))) {
+            if (aKey) revertedMonthKeys.add(aKey);
             const newFines = { ...(ag.finesPaid || {}) };
             delete newFines[targetHouse.id];
             if (targetHouse.blockNumber) delete newFines[targetHouse.blockNumber];
@@ -1650,11 +1667,71 @@ export function useStorage() {
           }
           return ag;
         });
+
+        // Kembalikan status periodHistory baksos jika sebelumnya ditandai lunas oleh transaksi ini
+        if (targetHouse.periodHistory) {
+          const updatedPeriodHist = { ...targetHouse.periodHistory };
+          let changedHist = false;
+          Object.entries(updatedPeriodHist).forEach(([k, snap]) => {
+            if (!snap) return;
+            const normK = parseIndonesianMonthYearToKey(k) || k;
+            const settledByThisTx =
+              (txPeriodLabel && snap.baksosSettlementMonth?.toLowerCase() === txPeriodLabel.toLowerCase()) ||
+              (snap.isBaksosSettledLater && snap.baksosPaidDate === txToDelete.date) ||
+              (revertedMonthKeys.has(normK) && snap.baksosStatus === 'Lunas') ||
+              (normK === txMonthKey && snap.baksosStatus === 'Lunas' && !snap.isBaksosSettledLater);
+
+            if (settledByThisTx) {
+              changedHist = true;
+              const matchedAg = cur.baksosAgendas.find((a) => getMonthKeyFromDate(a.date) === normK);
+              updatedPeriodHist[k] = {
+                ...snap,
+                baksosStatus: 'Belum Bayar',
+                paidBaksosAmount: 0,
+                customBaksosFineAmount: matchedAg?.fineAmount || 10000,
+                updatedAt: new Date().toISOString(),
+              };
+              delete (updatedPeriodHist[k] as any).baksosSettlementMonth;
+              delete (updatedPeriodHist[k] as any).isBaksosSettledLater;
+              delete (updatedPeriodHist[k] as any).baksosPaidDate;
+            }
+          });
+          if (changedHist) {
+            const updatedH: ResidentHouse = {
+              ...targetHouse,
+              periodHistory: updatedPeriodHist,
+              updatedAt: new Date().toISOString(),
+            };
+            updatedResidents = cur.residents.map((h) => (h.id === updatedH.id ? updatedH : h));
+          }
+        }
       } else if (isTunggakan) {
-        // Kembalikan saldo pokok tunggakan
+        // Kembalikan saldo pokok tunggakan & batalkan status settlement bulan lalu jika dilunasi oleh transaksi ini
+        const updatedPeriodHist = { ...(targetHouse.periodHistory || {}) };
+        Object.entries(updatedPeriodHist).forEach(([k, snap]) => {
+          if (!snap) return;
+          const normK = parseIndonesianMonthYearToKey(k) || k;
+          const labelK = formatMonthYearFromKey(normK) || k;
+          const mentionedInTx = normK ? descMentionsPeriod(txToDelete.description || '', labelK, normK) : false;
+          const settledByThisTx =
+            (txPeriodLabel && snap.settlementMonth?.toLowerCase() === txPeriodLabel.toLowerCase() && (mentionedInTx || snap.paidDate === txToDelete.date)) ||
+            (snap.isArrearSettledLater && snap.paidDate === txToDelete.date);
+          if (settledByThisTx) {
+            updatedPeriodHist[k] = {
+              ...snap,
+              duesStatus: targetHouse.occupancy === 'Kosong' ? 'Kosong' : 'Belum Bayar',
+              paidAmount: 0,
+              paidDate: '',
+              updatedAt: new Date().toISOString(),
+            };
+            delete (updatedPeriodHist[k] as any).settlementMonth;
+            delete (updatedPeriodHist[k] as any).isArrearSettledLater;
+          }
+        });
         const updatedH: ResidentHouse = {
           ...targetHouse,
           previousArrears: (targetHouse.previousArrears || 0) + txToDelete.amount,
+          periodHistory: updatedPeriodHist,
           updatedAt: new Date().toISOString(),
         };
         updatedResidents = cur.residents.map((h) => (h.id === updatedH.id ? updatedH : h));
@@ -2185,6 +2262,8 @@ export function useStorage() {
   };
 
   // Pay Baksos Fine of 10.000: records fine as paid and automatically adds cash transaction to Kas Utama
+  // Jika agenda baksos berasal dari bulan sebelumnya (tunggakan baksos lalu), catat transaksi ke bulan aktif saat ini
+  // dan tandai periodHistory bulan tertunggak sebagai Lunas (Rp 0 nominal) agar tidak mengubah saldo/nominal bulan lalu.
   const markBaksosFinePaid = (
     agendaId: string,
     residentId: string,
@@ -2198,11 +2277,31 @@ export function useStorage() {
       );
       const resId = targetHouse ? targetHouse.id : residentId;
       const actualBlock = targetHouse ? targetHouse.blockNumber : blockNo;
-      const actualName = targetHouse ? (targetHouse.headName || houseName) : houseName;
+      const actualName = targetHouse ? (targetHouse.duesHeadNameOverride || targetHouse.headName || houseName) : houseName;
 
       const todayStr = new Date().toISOString().slice(0, 10);
-      const txDate = targetAgenda?.date || todayStr;
+      const todayKey = getMonthKeyFromDate(todayStr);
+      const agendaMonthKey = targetAgenda?.date ? getMonthKeyFromDate(targetAgenda.date) : null;
       const agendaMonth = targetAgenda?.date ? formatMonthYearFromDate(targetAgenda.date) : '';
+      const currentActiveMonth = cur.siteConfig.duesCurrentMonth || '';
+      const currentActiveKey = parseIndonesianMonthYearToKey(currentActiveMonth);
+
+      const isPastAgendaInActivePeriod = Boolean(
+        agendaMonthKey && currentActiveKey && agendaMonthKey < currentActiveKey
+      );
+      const txDate = isPastAgendaInActivePeriod
+        ? (todayKey === currentActiveKey ? todayStr : `${currentActiveKey}-01`)
+        : (targetAgenda?.date || todayStr);
+
+      const paymentMonthKey = getMonthKeyFromDate(txDate);
+      const paymentMonthLabel =
+        formatMonthYearFromDate(txDate) ||
+        formatMonthYearFromKey(paymentMonthKey) ||
+        currentActiveMonth ||
+        agendaMonth;
+      const isSettledLater = Boolean(
+        agendaMonthKey && paymentMonthKey && agendaMonthKey < paymentMonthKey
+      );
       const fineAmount = targetAgenda?.fineAmount || 10000;
 
       const newTx: CashTransaction = {
@@ -2214,6 +2313,47 @@ export function useStorage() {
         description: `Pelunasan Denda Baksos (${formatRupiah(fineAmount)})${agendaMonth ? ` [${agendaMonth}]` : ''} - Blok ${actualBlock} (${actualName})`,
         amount: fineAmount,
       };
+
+      let updatedResidents = cur.residents;
+      if (targetHouse && agendaMonthKey) {
+        const newPeriodHist = { ...(targetHouse.periodHistory || {}) };
+        const existingEntry = newPeriodHist[agendaMonthKey] || (agendaMonth ? newPeriodHist[agendaMonth] : undefined) || {};
+        const nextEntry = isSettledLater
+          ? {
+              ...existingEntry,
+              baksosStatus: 'Lunas' as const,
+              paidBaksosAmount: 0,
+              customBaksosFineAmount: 0,
+              baksosSettlementMonth: paymentMonthLabel,
+              isBaksosSettledLater: true,
+              baksosPaidDate: txDate,
+              updatedAt: new Date().toISOString(),
+            }
+          : {
+              ...existingEntry,
+              baksosStatus: 'Lunas' as const,
+              paidBaksosAmount: fineAmount,
+              customBaksosFineAmount: 0,
+              baksosPaidDate: txDate,
+              updatedAt: new Date().toISOString(),
+            };
+        newPeriodHist[agendaMonthKey] = nextEntry;
+        if (agendaMonth) {
+          newPeriodHist[agendaMonth] = { ...nextEntry };
+        }
+        updatedResidents = cur.residents.map((h) => {
+          if (h.id !== targetHouse.id) return h;
+          return {
+            ...h,
+            periodHistory: newPeriodHist,
+            customBaksosFineAmount:
+              !isSettledLater && (h.customBaksosFineAmount || 0) > 0
+                ? Math.max(0, (h.customBaksosFineAmount || 0) - fineAmount)
+                : h.customBaksosFineAmount,
+            updatedAt: new Date().toISOString(),
+          };
+        });
+      }
 
       return {
         baksosAgendas: cur.baksosAgendas.map((agenda) => {
@@ -2230,6 +2370,7 @@ export function useStorage() {
             finesPaid: newFines,
           };
         }),
+        residents: updatedResidents,
         transactions: [newTx, ...cur.transactions],
       };
     });
@@ -2245,18 +2386,49 @@ export function useStorage() {
       const resId = targetHouse ? targetHouse.id : residentId;
       const blockNo = targetHouse ? targetHouse.blockNumber : null;
 
-      // Also remove matching Denda Baksos transaction in Buku Kas if exists
       const blockRegex = blockNo ? new RegExp(`\\b${blockNo.replace('/', '\\/')}\\b`, 'i') : null;
       const agendaMonthKey = targetAgenda?.date ? getMonthKeyFromDate(targetAgenda.date) : null;
+      const agendaMonthLabel = targetAgenda?.date ? formatMonthYearFromDate(targetAgenda.date) : '';
 
       const updatedTxs = cur.transactions.filter((tx) => {
-        if (tx.type !== 'masuk' || tx.category !== 'Denda Baksos') return true;
+        if (tx.type !== 'masuk' || !isBaksosFineTx(tx)) return true;
         if (!blockRegex || !blockRegex.test(tx.description)) return true;
         if (agendaMonthKey && getMonthKeyFromDate(tx.date) === agendaMonthKey) {
           return false;
         }
+        if (agendaMonthKey && agendaMonthLabel && descMentionsPeriod(tx.description, agendaMonthLabel, agendaMonthKey)) {
+          return false;
+        }
+        if (targetAgenda?.title && tx.description.toLowerCase().includes(targetAgenda.title.toLowerCase())) {
+          return false;
+        }
         return true;
       });
+
+      let updatedResidents = cur.residents;
+      if (targetHouse && agendaMonthKey) {
+        const newPeriodHist = { ...(targetHouse.periodHistory || {}) };
+        const revertKey = (k: string) => {
+          if (!newPeriodHist[k]) return;
+          newPeriodHist[k] = {
+            ...newPeriodHist[k],
+            baksosStatus: 'Belum Bayar',
+            paidBaksosAmount: 0,
+            customBaksosFineAmount: targetAgenda?.fineAmount || 10000,
+            updatedAt: new Date().toISOString(),
+          };
+          delete (newPeriodHist[k] as any).baksosSettlementMonth;
+          delete (newPeriodHist[k] as any).isBaksosSettledLater;
+          delete (newPeriodHist[k] as any).baksosPaidDate;
+        };
+        revertKey(agendaMonthKey);
+        if (agendaMonthLabel) revertKey(agendaMonthLabel);
+        updatedResidents = cur.residents.map((h) =>
+          h.id === targetHouse.id
+            ? { ...h, periodHistory: newPeriodHist, updatedAt: new Date().toISOString() }
+            : h
+        );
+      }
 
       return {
         baksosAgendas: cur.baksosAgendas.map((agenda) => {
@@ -2272,6 +2444,7 @@ export function useStorage() {
             finesPaid: updatedFines,
           };
         }),
+        residents: updatedResidents,
         transactions: updatedTxs,
       };
     });

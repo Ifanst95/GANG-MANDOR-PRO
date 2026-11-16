@@ -85,6 +85,59 @@ function ensureSeptemberDefaultTransactions(
   return txs;
 }
 
+function parseBlockNumber(raw: string = '') {
+  const clean = (raw || '').trim().toUpperCase();
+  const match = clean.match(/^([A-Z]+)?\s*(\d+)?\s*[\/\-\s.]*\s*(\d+)(?:[.\/](\d+))?\s*([A-Z0-9\-]*)?$/);
+  if (match) {
+    const prefix = match[1] || '';
+    const clusterNumber = match[2] !== undefined ? parseInt(match[2], 10) : 0;
+    const houseNumber = match[3] !== undefined ? parseInt(match[3], 10) : 0;
+    const subNumber = match[4] !== undefined ? parseInt(match[4], 10) : 0;
+    const suffix = (match[5] || '').trim();
+    return { prefix, clusterNumber, houseNumber, subNumber, suffix, raw: clean };
+  }
+  const digits = clean.match(/\d+/g);
+  return {
+    prefix: clean.replace(/\d+/g, ''),
+    clusterNumber: digits && digits.length > 1 ? parseInt(digits[0], 10) : 0,
+    houseNumber:
+      digits && digits.length > 1
+        ? parseInt(digits[1], 10)
+        : digits && digits.length === 1
+        ? parseInt(digits[0], 10)
+        : 0,
+    subNumber: digits && digits.length > 2 ? parseInt(digits[2], 10) : 0,
+    suffix: clean,
+    raw: clean,
+  };
+}
+
+function compareBlockNumbers(a: string = '', b: string = ''): number {
+  const pa = parseBlockNumber(a);
+  const pb = parseBlockNumber(b);
+  if (pa.prefix !== pb.prefix) return pa.prefix.localeCompare(pb.prefix);
+  if (pa.clusterNumber !== pb.clusterNumber) return pa.clusterNumber - pb.clusterNumber;
+  if (pa.houseNumber !== pb.houseNumber) return pa.houseNumber - pb.houseNumber;
+  if (pa.subNumber !== pb.subNumber) return pa.subNumber - pb.subNumber;
+  if (pa.suffix !== pb.suffix) return pa.suffix.localeCompare(pb.suffix);
+  return pa.raw.localeCompare(pb.raw);
+}
+
+function sortResidentsByBlock<T extends { blockNumber: string; headName?: string; id?: string }>(
+  residents: T[]
+): T[] {
+  if (!Array.isArray(residents)) return [];
+  return [...residents].sort((a, b) => {
+    const cmp = compareBlockNumbers(a.blockNumber, b.blockNumber);
+    if (cmp !== 0) return cmp;
+    const nameA = (a.headName || '').trim();
+    const nameB = (b.headName || '').trim();
+    const nameCmp = nameA.localeCompare(nameB, 'id');
+    if (nameCmp !== 0) return nameCmp;
+    return (a.id || '').localeCompare(b.id || '');
+  });
+}
+
 function normalizePayload(raw: any): RuntimeDatabasePayload | null {
   if (!raw || typeof raw !== 'object' || !raw.siteConfig || !Array.isArray(raw.residents)) {
     return null;
@@ -103,7 +156,7 @@ function normalizePayload(raw: any): RuntimeDatabasePayload | null {
     updatedBy: raw.updatedBy || 'Portal Online Gang Mandor',
     clientId: raw.clientId,
     siteConfig: raw.siteConfig,
-    residents: raw.residents,
+    residents: sortResidentsByBlock(raw.residents),
     transactions: ensureSeptemberDefaultTransactions(
       Array.isArray(raw.transactions) ? raw.transactions : INITIAL_TRANSACTIONS
     ),

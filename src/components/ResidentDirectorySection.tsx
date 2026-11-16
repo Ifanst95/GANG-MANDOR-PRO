@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   ChevronDown,
   ChevronUp,
@@ -39,6 +39,7 @@ import {
   isHouseUnfilled,
   isHouseVacant,
   openWhatsAppShare,
+  sortResidentsByBlock,
 } from '../utils/helpers';
 import { ExcelUploadModal } from './ExcelUploadModal';
 
@@ -211,16 +212,18 @@ export const ResidentDirectorySection: React.FC<ResidentDirectorySectionProps> =
     setIsModalOpen(false);
   };
 
+  const sortedResidents = useMemo(() => sortResidentsByBlock(residents), [residents]);
+
   const handleExportExcel = () => {
-    exportResidentsToExcel(residents);
+    exportResidentsToExcel(sortedResidents);
   };
 
   const handleShareDirectoryWA = () => {
     let text =
       `🏘️ *DATA WARGA GANG MANDOR BLOK K2/25 - K3/24*\n` +
-      `Total Rumah: ${residents.length} | Total Terdata: ${residents.flatMap((h) => h.members).length} Jiwa\n\n`;
+      `Total Rumah: ${sortedResidents.length} | Total Terdata: ${sortedResidents.flatMap((h) => h.members).length} Jiwa\n\n`;
 
-    residents.forEach((h) => {
+    sortedResidents.forEach((h) => {
       text +=
         `🏠 *Blok ${h.blockNumber}* - Bpk/Ibu ${h.headName}\n` +
         `• Jumlah Anggota: ${h.members?.length || 0} Jiwa\n` +
@@ -234,7 +237,7 @@ export const ResidentDirectorySection: React.FC<ResidentDirectorySectionProps> =
   };
 
   // Filter residents
-  const filteredResidents = residents.filter((h) => {
+  const filteredResidents = sortedResidents.filter((h) => {
     const term = searchTerm.toLowerCase();
     const matchTerm =
       h.blockNumber.toLowerCase().includes(term) ||

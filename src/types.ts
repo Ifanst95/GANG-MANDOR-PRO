@@ -68,6 +68,8 @@ export interface ResidentHouse {
     paidBaksosAmount?: number;
     baksosStatus?: string;
     baksosPaidDate?: string;
+    baksosSettlementMonth?: string;
+    isBaksosSettledLater?: boolean;
     updatedAt?: string;
   }>;
   members: FamilyMember[];

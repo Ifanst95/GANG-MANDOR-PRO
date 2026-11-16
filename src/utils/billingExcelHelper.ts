@@ -1,6 +1,13 @@
 import * as XLSX from 'xlsx';
 import { BaksosAgenda, CashTransaction, DuesStatus, ResidentHouse } from '../types';
-import { formatDateDDMMYYYY, getSubsequentMonthLabels, isHouseVacant } from './helpers';
+import {
+  formatDateDDMMYYYY,
+  formatMonthYearFromDate,
+  formatMonthYearFromKey,
+  getSubsequentMonthLabels,
+  isHouseVacant,
+  parseIndonesianMonthYearToKey,
+} from './helpers';
 
 export type PaymentChoiceOption =
   | 'Semua Lunas'
@@ -564,6 +571,113 @@ export async function parseBillingExcelFile(
                 ? trimmedHead
                 : matchedResident.duesHeadNameOverride;
 
+            const activePeriodLabel = rawPeriod || targetPeriod;
+            const activePeriodKey = parseIndonesianMonthYearToKey(activePeriodLabel);
+            const settlementLabel = formatMonthYearFromDate(parsedDate) || activePeriodLabel;
+            const settlementKey = parseIndonesianMonthYearToKey(settlementLabel) || activePeriodKey || '';
+            const nextPeriodHist = { ...(matchedResident.periodHistory || {}) };
+
+            if (paidDues && activePeriodKey) {
+              const existingCur = nextPeriodHist[activePeriodKey] || nextPeriodHist[activePeriodLabel] || {};
+              nextPeriodHist[activePeriodKey] = {
+                ...existingCur,
+                occupancy: existingCur.occupancy || matchedResident.occupancy,
+                headName: existingCur.headName || matchedResident.headName,
+                duesHeadNameOverride: headOverride || existingCur.duesHeadNameOverride || matchedResident.headName,
+                duesStatus: 'Lunas',
+                customDuesAmount: isVacant ? 0 : duesAmount,
+                paidAmount: isVacant ? 0 : duesAmount,
+                paidMonths: 1,
+                paidDate: parsedDate,
+                updatedAt: new Date().toISOString(),
+              };
+              nextPeriodHist[activePeriodLabel] = { ...nextPeriodHist[activePeriodKey] };
+            }
+
+            const settledPastIuranLabels: string[] = [];
+            if (paidPreviousArrears && previousArrears > 0) {
+              const pastKeys = Object.keys(nextPeriodHist)
+                .map((k) => ({ rawKey: k, normKey: parseIndonesianMonthYearToKey(k) || k }))
+                .filter((x) => /^\d{4}-\d{2}$/.test(x.normKey) && (!settlementKey || x.normKey < settlementKey))
+                .sort((a, b) => a.normKey.localeCompare(b.normKey));
+
+              const seenNormKeys = new Set<string>();
+              pastKeys.forEach(({ rawKey, normKey }) => {
+                if (seenNormKeys.has(normKey)) return;
+                seenNormKeys.add(normKey);
+                const entry = nextPeriodHist[normKey] || nextPeriodHist[rawKey];
+                if (entry && entry.duesStatus === 'Belum Bayar' && entry.occupancy !== 'Kosong') {
+                  const lbl = formatMonthYearFromKey(normKey);
+                  nextPeriodHist[normKey] = {
+                    ...entry,
+                    duesStatus: 'Lunas',
+                    paidAmount: 0,
+                    isArrearSettledLater: true,
+                    settlementMonth: settlementLabel,
+                    paidDate: parsedDate,
+                    updatedAt: new Date().toISOString(),
+                  };
+                  if (lbl) {
+                    nextPeriodHist[lbl] = { ...nextPeriodHist[normKey] };
+                    settledPastIuranLabels.push(lbl);
+                  }
+                }
+              });
+
+              // Juga cek bulan yang disebut secara eksplisit di Keterangan Tunggakan Lalu
+              const noteMonthMatches = (previousArrearsNote || '').match(
+                /(Januari|Februari|Maret|April|Mei|Juni|Juli|Agustus|September|Oktober|November|Desember)(?:\s+\d{4})?/gi
+              );
+              if (noteMonthMatches) {
+                const defaultYear = (settlementKey || '2026-01').slice(0, 4);
+                noteMonthMatches.forEach((m) => {
+                  const fullLabel = /\d{4}/.test(m) ? m.trim() : `${m.trim()} ${defaultYear}`;
+                  const mKey = parseIndonesianMonthYearToKey(fullLabel);
+                  if (mKey && (!settlementKey || mKey < settlementKey) && !seenNormKeys.has(mKey)) {
+                    seenNormKeys.add(mKey);
+                    const existingEntry = nextPeriodHist[mKey] || nextPeriodHist[fullLabel] || {};
+                    if (existingEntry.duesStatus !== 'Lunas' && existingEntry.duesStatus !== 'Bayar Lebih') {
+                      nextPeriodHist[mKey] = {
+                        ...existingEntry,
+                        occupancy: existingEntry.occupancy || matchedResident.occupancy,
+                        headName: existingEntry.headName || matchedResident.headName,
+                        duesHeadNameOverride: existingEntry.duesHeadNameOverride || headOverride || matchedResident.headName,
+                        duesStatus: 'Lunas',
+                        paidAmount: 0,
+                        isArrearSettledLater: true,
+                        settlementMonth: settlementLabel,
+                        paidDate: parsedDate,
+                        updatedAt: new Date().toISOString(),
+                      };
+                      nextPeriodHist[fullLabel] = { ...nextPeriodHist[mKey] };
+                      settledPastIuranLabels.push(fullLabel);
+                    }
+                  }
+                });
+              }
+            }
+
+            if (paidBaksos && baksosFine > 0) {
+              Object.keys(nextPeriodHist).forEach((k) => {
+                const normKey = parseIndonesianMonthYearToKey(k) || k;
+                if (/^\d{4}-\d{2}$/.test(normKey) && settlementKey && normKey < settlementKey) {
+                  const entry = nextPeriodHist[k];
+                  if (entry && (entry.baksosStatus === 'Belum Bayar' || (entry.customBaksosFineAmount || 0) > 0)) {
+                    nextPeriodHist[k] = {
+                      ...entry,
+                      baksosStatus: 'Lunas',
+                      paidBaksosAmount: 0,
+                      customBaksosFineAmount: 0,
+                      isBaksosSettledLater: true,
+                      baksosSettlementMonth: settlementLabel,
+                      baksosPaidDate: parsedDate,
+                      updatedAt: new Date().toISOString(),
+                    };
+                  }
+                }
+              });
+            }
+
             const updatedHouse: ResidentHouse = {
               ...matchedResident,
               duesHeadNameOverride: headOverride,
@@ -574,9 +688,10 @@ export async function parseBillingExcelFile(
               duesPaidMonths: paidDues ? 1 : 0,
               duesPrepaidBalance: 0,
               duesPaidDate: paidDues ? parsedDate : matchedResident.duesPaidDate,
-              duesMonthNote: rawPeriod || targetPeriod,
+              duesMonthNote: activePeriodLabel,
               previousArrears: remainingPrevArrears,
               previousArrearsNote: remainingPrevArrears > 0 ? previousArrearsNote : '',
+              periodHistory: nextPeriodHist,
             };
 
             updatedResidents.push(updatedHouse);
@@ -591,14 +706,14 @@ export async function parseBillingExcelFile(
                 type: 'masuk',
                 pool: 'Kas Utama',
                 category: 'Iuran Warga',
-                description: `Penarikan Iuran Bulanan (${rawPeriod}) Warga Blok ${matchedResident.blockNumber} ${houseDesc}${
+                description: `Penarikan Iuran Bulanan (${activePeriodLabel}) Warga Blok ${matchedResident.blockNumber} ${houseDesc}${
                   rawNotes ? ` - ${rawNotes}` : ''
                 }`,
                 amount: duesAmount,
               });
             }
 
-            // 2. Catat transaksi denda baksos ke Kas Utama & siapkan aksi pelunasan baksos
+            // 2. Siapkan aksi pelunasan agenda baksos & catat sisa denda manual jika ada di luar agenda
             if (paidBaksos && baksosFine > 0) {
               unpaidBaksosList.forEach((agenda) => {
                 baksosPaidActions.push({
@@ -609,25 +724,32 @@ export async function parseBillingExcelFile(
                 });
               });
 
-              cashTransactions.push({
-                date: parsedDate,
-                type: 'masuk',
-                pool: 'Kas Utama',
-                category: 'Denda Baksos',
-                description: `Pelunasan Denda Baksos Warga Blok ${matchedResident.blockNumber} ${houseDesc}`,
-                amount: baksosFine,
-              });
+              const agendaFineSum = unpaidBaksosList.reduce((s, a) => s + (a.fineAmount || 10000), 0);
+              const extraBaksosFine = Math.max(0, baksosFine - agendaFineSum);
+              if (extraBaksosFine > 0) {
+                cashTransactions.push({
+                  date: parsedDate,
+                  type: 'masuk',
+                  pool: 'Kas Utama',
+                  category: 'Denda Baksos',
+                  description: `Pelunasan Denda Baksos Warga Blok ${matchedResident.blockNumber} ${houseDesc}`,
+                  amount: extraBaksosFine,
+                });
+              }
             }
 
-            // 3. Catat transaksi pelunasan tunggakan sebelumnya ke Kas Utama
+            // 3. Catat transaksi pelunasan tunggakan sebelumnya ke Kas Utama (dengan kategori Pembayaran Tunggakan)
             if (paidPreviousArrears && previousArrears > 0) {
+              const settledDesc = settledPastIuranLabels.length > 0
+                ? settledPastIuranLabels.join(', ')
+                : previousArrearsNote;
               cashTransactions.push({
                 date: parsedDate,
                 type: 'masuk',
                 pool: 'Kas Utama',
-                category: 'Iuran Warga',
+                category: 'Pembayaran Tunggakan',
                 description: `Pelunasan Tunggakan Lalu Blok ${matchedResident.blockNumber} ${houseDesc}${
-                  previousArrearsNote ? ` (${previousArrearsNote})` : ''
+                  settledDesc ? ` (${settledDesc})` : ''
                 }`,
                 amount: previousArrears,
               });

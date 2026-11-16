@@ -43,10 +43,12 @@ export const TREASURER_BANK = {
 import { BaksosAgenda, CashTransaction, ResidentHouse, SiteConfig } from '../types';
 import {
   computeOverallKKRecapList,
+  formatMonthYearFromDate,
   formatRupiah,
   getSubsequentMonthLabels,
   isHouseVacant,
   openWhatsAppShare,
+  parseIndonesianMonthYearToKey,
   renderArrearsSingleWhatsAppMessage,
   renderArrearsBroadcastWhatsAppMessage,
 } from '../utils/helpers';
@@ -193,11 +195,88 @@ export const ArrearsSection: React.FC<ArrearsSectionProps> = ({
     return matchQuery;
   });
 
+  const settlePastPeriodHistoryForHouse = (
+    house: ResidentHouse,
+    settlementLabel: string,
+    paidDateStr: string,
+    options: { settleIuran?: boolean; settleBaksos?: boolean; maxIuranPay?: number }
+  ) => {
+    const targetRecap = recapList.find((r) => r.house.id === house.id);
+    const nextPeriodHist = { ...(house.periodHistory || {}) };
+    const settledIuranLabels: string[] = [];
+    const settledBaksosLabels: string[] = [];
+    const settlementKey = parseIndonesianMonthYearToKey(settlementLabel) || '';
+    const nominal = targetRecap?.nominalPerMonth || house.customDuesAmount || config.duesAmountPerMonth || 25000;
+
+    if (options.settleIuran && targetRecap && targetRecap.unpaidPastPeriods.length > 0) {
+      let rem = options.maxIuranPay ?? Infinity;
+      for (const pLabel of targetRecap.unpaidPastPeriods) {
+        if (rem <= 0) break;
+        const pKey = parseIndonesianMonthYearToKey(pLabel);
+        if (pKey && (!settlementKey || pKey < settlementKey)) {
+          const existing = nextPeriodHist[pKey] || nextPeriodHist[pLabel] || {};
+          nextPeriodHist[pKey] = {
+            ...existing,
+            occupancy: existing.occupancy || house.occupancy,
+            headName: existing.headName || house.headName,
+            duesHeadNameOverride: existing.duesHeadNameOverride || house.duesHeadNameOverride || house.headName,
+            duesStatus: 'Lunas',
+            paidAmount: 0,
+            isArrearSettledLater: true,
+            settlementMonth: settlementLabel,
+            paidDate: paidDateStr,
+            updatedAt: new Date().toISOString(),
+          };
+          nextPeriodHist[pLabel] = { ...nextPeriodHist[pKey] };
+          settledIuranLabels.push(pLabel);
+          const pDet = targetRecap.periodsDetail.find((d) => d.periodLabel === pLabel);
+          rem -= pDet?.unpaidAmount || nominal;
+        }
+      }
+    }
+
+    if (options.settleBaksos && targetRecap?.unpaidPastBaksosPeriods) {
+      for (const bp of targetRecap.unpaidPastBaksosPeriods) {
+        if (bp.pKey && (!settlementKey || bp.pKey < settlementKey)) {
+          const existing = nextPeriodHist[bp.pKey] || nextPeriodHist[bp.periodLabel] || {};
+          nextPeriodHist[bp.pKey] = {
+            ...existing,
+            baksosStatus: 'Lunas',
+            paidBaksosAmount: 0,
+            customBaksosFineAmount: 0,
+            isBaksosSettledLater: true,
+            baksosSettlementMonth: settlementLabel,
+            baksosPaidDate: paidDateStr,
+            updatedAt: new Date().toISOString(),
+          };
+          nextPeriodHist[bp.periodLabel] = { ...nextPeriodHist[bp.pKey] };
+          settledBaksosLabels.push(bp.periodLabel);
+        }
+      }
+    }
+
+    return { nextPeriodHist, settledIuranLabels, settledBaksosLabels };
+  };
+
   const handleResetPrev = (house: ResidentHouse) => {
-    const prevAmt =
-      (house.previousArrears || 0) +
-      (house.previousBaksosArrears || 0) +
-      (house.customBaksosFineAmount || 0);
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const settlementLabel = formatMonthYearFromDate(todayStr) || config.duesCurrentMonth || currentMonthLabel;
+    const targetRecap = recapList.find((r) => r.house.id === house.id);
+    const prevIuranAmt = Math.max(house.previousArrears || 0, targetRecap?.previousDuesArrears || 0);
+    const prevBaksosAmt = (house.previousBaksosArrears || 0) + (house.customBaksosFineAmount || 0);
+    const payerName = house.duesHeadNameOverride || house.headName;
+
+    const { nextPeriodHist, settledIuranLabels, settledBaksosLabels } = settlePastPeriodHistoryForHouse(
+      house,
+      settlementLabel,
+      todayStr,
+      {
+        settleIuran: prevIuranAmt > 0,
+        settleBaksos: prevBaksosAmt > 0,
+        maxIuranPay: prevIuranAmt,
+      }
+    );
+
     onUpdateResident({
       ...house,
       previousArrears: 0,
@@ -205,20 +284,39 @@ export const ArrearsSection: React.FC<ArrearsSectionProps> = ({
       previousBaksosArrears: 0,
       previousBaksosArrearsNote: '',
       customBaksosFineAmount: 0,
+      periodHistory: nextPeriodHist,
     });
 
-    if (prevAmt > 0) {
-      try {
-        confetti({ particleCount: 40, spread: 50, origin: { y: 0.7 } });
-      } catch {}
+    if (prevIuranAmt > 0) {
       onAddTransaction({
-        date: new Date().toISOString().slice(0, 10),
+        date: todayStr,
         type: 'masuk',
         pool: 'Kas Utama',
         category: 'Pembayaran Tunggakan',
-        description: `Pelunasan Seluruh Tunggakan Sebelumnya Blok ${house.blockNumber} (${house.duesHeadNameOverride || house.headName})`,
-        amount: prevAmt,
+        description: `Pelunasan Tunggakan Iuran Sebelumnya${
+          settledIuranLabels.length > 0 ? ` (${settledIuranLabels.join(', ')})` : ''
+        } Blok ${house.blockNumber} (${payerName})`,
+        amount: prevIuranAmt,
       });
+    }
+
+    if (prevBaksosAmt > 0) {
+      onAddTransaction({
+        date: todayStr,
+        type: 'masuk',
+        pool: 'Kas Utama',
+        category: 'Denda Baksos',
+        description: `Pelunasan Denda Baksos Lalu${
+          settledBaksosLabels.length > 0 ? ` [${settledBaksosLabels.join(', ')}]` : ''
+        } Blok ${house.blockNumber} (${payerName})`,
+        amount: prevBaksosAmt,
+      });
+    }
+
+    if (prevIuranAmt + prevBaksosAmt > 0) {
+      try {
+        confetti({ particleCount: 40, spread: 50, origin: { y: 0.7 } });
+      } catch {}
     }
   };
 
@@ -238,21 +336,36 @@ export const ArrearsSection: React.FC<ArrearsSectionProps> = ({
     let remainingPayment = payVal;
     const house: ResidentHouse = { ...partialPayItem.house };
     const todayStr = new Date().toISOString().slice(0, 10);
+    const settlementLabel = formatMonthYearFromDate(todayStr) || config.duesCurrentMonth || currentMonthLabel;
+    const payerName = house.duesHeadNameOverride || house.headName;
 
-    // 1. Potong Tunggakan Bulan / Tahun Lalu terlebih dahulu
-    if (remainingPayment > 0 && (house.previousArrears || 0) > 0) {
-      const deductPrev = Math.min(remainingPayment, house.previousArrears);
-      house.previousArrears -= deductPrev;
+    // 1. Potong Tunggakan Bulan / Tahun Lalu terlebih dahulu (tandai bulan tertunggak Lunas Rp 0)
+    const totalPrevDues = Math.max(house.previousArrears || 0, partialPayItem.previousArrears || 0);
+    if (remainingPayment > 0 && totalPrevDues > 0) {
+      const deductPrev = Math.min(remainingPayment, totalPrevDues);
+      house.previousArrears = Math.max(0, (house.previousArrears || 0) - deductPrev);
       remainingPayment -= deductPrev;
+
+      const { nextPeriodHist, settledIuranLabels } = settlePastPeriodHistoryForHouse(
+        house,
+        settlementLabel,
+        todayStr,
+        { settleIuran: true, maxIuranPay: deductPrev }
+      );
+      house.periodHistory = nextPeriodHist;
+
+      if (house.previousArrears === 0 && settledIuranLabels.length >= (partialPayItem.unpaidPastPeriods?.length || 0)) {
+        house.previousArrearsNote = '';
+      }
 
       onAddTransaction({
         date: todayStr,
         type: 'masuk',
         pool: 'Kas Utama',
         category: 'Pembayaran Tunggakan',
-        description: `Cicilan / Pembayaran Tunggakan Lalu Blok ${house.blockNumber} (${house.duesHeadNameOverride || house.headName})${
-          partialNote ? ` - ${partialNote}` : ''
-        }`,
+        description: `Cicilan / Pembayaran Tunggakan Lalu${
+          settledIuranLabels.length > 0 ? ` (${settledIuranLabels.join(', ')})` : ''
+        } Blok ${house.blockNumber} (${payerName})${partialNote ? ` - ${partialNote}` : ''}`,
         amount: deductPrev,
       });
     }
@@ -264,29 +377,44 @@ export const ArrearsSection: React.FC<ArrearsSectionProps> = ({
       house.previousBaksosArrears = currentPrevBaksos - deductBaksosPrev;
       remainingPayment -= deductBaksosPrev;
 
+      const { nextPeriodHist, settledBaksosLabels } = settlePastPeriodHistoryForHouse(
+        house,
+        settlementLabel,
+        todayStr,
+        { settleBaksos: true }
+      );
+      house.periodHistory = nextPeriodHist;
+      if (house.previousBaksosArrears === 0) {
+        house.previousBaksosArrearsNote = '';
+      }
+
       onAddTransaction({
         date: todayStr,
         type: 'masuk',
         pool: 'Kas Utama',
-        category: 'Pembayaran Tunggakan',
-        description: `Cicilan / Pembayaran Denda Baksos Lalu Blok ${house.blockNumber} (${house.duesHeadNameOverride || house.headName})${
-          partialNote ? ` - ${partialNote}` : ''
-        }`,
+        category: 'Denda Baksos',
+        description: `Cicilan / Pembayaran Denda Baksos Lalu${
+          settledBaksosLabels.length > 0 ? ` [${settledBaksosLabels.join(', ')}]` : ''
+        } Blok ${house.blockNumber} (${payerName})${partialNote ? ` - ${partialNote}` : ''}`,
         amount: deductBaksosPrev,
       });
     }
 
-    // 2. Potong Denda Baksos Agenda Berjalan (per kelipatan Rp 10.000 jika cukup)
+    // 2. Hitung agenda Denda Baksos berjalan/lalu yang tercover oleh sisa pembayaran (eksekusi onMarkFinePaid SETELAH onUpdateResident agar periodHistory tidak tertimpa)
+    const agendasToMarkPaid: BaksosAgenda[] = [];
     if (remainingPayment >= 10000 && partialPayItem.unpaidBaksosList.length > 0) {
       for (const agenda of partialPayItem.unpaidBaksosList) {
         if (remainingPayment >= 10000) {
-          onMarkFinePaid(agenda.id, house.id, house.duesHeadNameOverride || house.headName, house.blockNumber);
+          agendasToMarkPaid.push(agenda);
           remainingPayment -= 10000;
         }
       }
+      if (agendasToMarkPaid.length >= partialPayItem.unpaidBaksosList.length) {
+        house.customBaksosFineAmount = 0;
+      }
     }
 
-    // 3. Potong Iuran Bulan Berjalan & Hitung Kelebihan Bayar (jika bayar lebih dari bulan berjalan)
+    // 3. Potong Iuran Bulan Berjalan & Hitung Kelebihan Bayar (jika masih ada sisa setelah tunggakan & baksos)
     if (remainingPayment > 0) {
       const nominal = partialPayItem.houseMonthlyNominal;
       const alreadyPaidThisMonth =
@@ -317,7 +445,6 @@ export const ArrearsSection: React.FC<ArrearsSectionProps> = ({
         house.duesPaidDate = todayStr;
       }
 
-      const payerName = house.duesHeadNameOverride || house.headName;
       onAddTransaction({
         date: todayStr,
         type: 'masuk',
@@ -335,7 +462,13 @@ export const ArrearsSection: React.FC<ArrearsSectionProps> = ({
       });
     }
 
+    // Simpan house terlebih dahulu sebelum onMarkFinePaid agar markBaksosFinePaid melapisi periodHistory secara aman
     onUpdateResident(house);
+
+    agendasToMarkPaid.forEach((agenda) => {
+      onMarkFinePaid(agenda.id, house.id, payerName, house.blockNumber);
+    });
+
     setPartialPayItem(null);
 
     try {
@@ -344,58 +477,76 @@ export const ArrearsSection: React.FC<ArrearsSectionProps> = ({
   };
 
   const handlePayAllArrears = (item: typeof arrearsList[0]) => {
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const settlementLabel = formatMonthYearFromDate(todayStr) || config.duesCurrentMonth || currentMonthLabel;
     const payerName = item.house.duesHeadNameOverride || item.house.headName;
+
+    const { nextPeriodHist, settledIuranLabels, settledBaksosLabels } = settlePastPeriodHistoryForHouse(
+      item.house,
+      settlementLabel,
+      todayStr,
+      {
+        settleIuran: item.previousArrears > 0,
+        settleBaksos: item.previousBaksosArrears > 0 || (item.house.customBaksosFineAmount || 0) > 0,
+        maxIuranPay: item.previousArrears,
+      }
+    );
+
     if (item.duesArrears > 0) {
       onAddTransaction({
-        date: new Date().toISOString().slice(0, 10),
+        date: todayStr,
         type: 'masuk',
         pool: 'Kas Utama',
         category: 'Iuran Warga',
-        description: `Pelunasan Iuran Bulanan Blok ${item.house.blockNumber} (${payerName})`,
+        description: `Pelunasan Iuran Bulanan (${currentMonthLabel}) Blok ${item.house.blockNumber} (${payerName})`,
         amount: item.duesArrears,
       });
     }
 
-    item.unpaidBaksosList.forEach((agenda) => {
-      onMarkFinePaid(agenda.id, item.house.id, payerName, item.house.blockNumber);
-    });
-
     if (item.previousArrears > 0) {
       onAddTransaction({
-        date: new Date().toISOString().slice(0, 10),
+        date: todayStr,
         type: 'masuk',
         pool: 'Kas Utama',
         category: 'Pembayaran Tunggakan',
-        description: `Pelunasan Tunggakan Iuran Sebelumnya Blok ${item.house.blockNumber} (${payerName})`,
+        description: `Pelunasan Tunggakan Iuran Sebelumnya${
+          settledIuranLabels.length > 0 ? ` (${settledIuranLabels.join(', ')})` : ''
+        } Blok ${item.house.blockNumber} (${payerName})`,
         amount: item.previousArrears,
       });
     }
 
     if (item.previousBaksosArrears > 0) {
       onAddTransaction({
-        date: new Date().toISOString().slice(0, 10),
+        date: todayStr,
         type: 'masuk',
         pool: 'Kas Utama',
-        category: 'Pembayaran Tunggakan',
-        description: `Pelunasan Tunggakan Denda Baksos Sebelumnya Blok ${item.house.blockNumber} (${payerName})${
+        category: 'Denda Baksos',
+        description: `Pelunasan Tunggakan Denda Baksos Sebelumnya${
+          settledBaksosLabels.length > 0 ? ` [${settledBaksosLabels.join(', ')}]` : ''
+        } Blok ${item.house.blockNumber} (${payerName})${
           item.previousBaksosArrearsNote ? ` - ${item.previousBaksosArrearsNote}` : ''
         }`,
         amount: item.previousBaksosArrears,
       });
     }
 
+    // Simpan perubahan data rumah & periodHistory terlebih dahulu sebelum onMarkFinePaid
     onUpdateResident({
       ...item.house,
-      duesStatus: 'Lunas',
-      duesPaidAmount: 0,
-      duesPaidDate:
-        item.duesArrears > 0
-          ? new Date().toISOString().slice(0, 10)
-          : item.house.duesPaidDate,
+      duesStatus: item.duesArrears > 0 ? 'Lunas' : item.house.duesStatus,
+      duesPaidAmount: item.duesArrears > 0 ? 0 : item.house.duesPaidAmount,
+      duesPaidDate: item.duesArrears > 0 ? todayStr : item.house.duesPaidDate,
       previousArrears: 0,
       previousArrearsNote: '',
       previousBaksosArrears: 0,
       previousBaksosArrearsNote: '',
+      customBaksosFineAmount: 0,
+      periodHistory: nextPeriodHist,
+    });
+
+    item.unpaidBaksosList.forEach((agenda) => {
+      onMarkFinePaid(agenda.id, item.house.id, payerName, item.house.blockNumber);
     });
 
     try {
