@@ -748,9 +748,9 @@ export const ArrearsSection: React.FC<ArrearsSectionProps> = ({
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-300">
+    <div className="space-y-4 sm:space-y-5 animate-in fade-in duration-300">
       {/* Top Banner Overview with Options Below Description */}
-      <div className="bg-gradient-to-r from-rose-50/90 via-orange-50/70 to-amber-50/80 dark:from-slate-900 dark:via-rose-950/50 dark:to-amber-950/40 rounded-2xl p-6 border border-rose-200 border-t-4 border-t-rose-500 shadow-xs space-y-4">
+      <div className="bg-gradient-to-r from-rose-50/90 via-orange-50/70 to-amber-50/80 dark:from-slate-900 dark:via-rose-950/50 dark:to-amber-950/40 rounded-2xl p-4 sm:p-5 border border-rose-200 shadow-xs space-y-3">
         {/* Row 1: Judul & Deskripsi Penuh */}
         <div>
           {(config.arrearsSectionTitle ?? 'Ringkasan Rekapitulasi Daftar Tunggakan Warga') && (
@@ -850,38 +850,38 @@ export const ArrearsSection: React.FC<ArrearsSectionProps> = ({
       </div>
 
       {/* Colorful Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white p-5 rounded-2xl shadow-md shadow-rose-600/15">
-          <span className="text-xs font-semibold text-rose-100 uppercase tracking-wider block">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+        <div className="bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white p-3.5 sm:p-4 rounded-2xl shadow-md shadow-rose-600/15">
+          <span className="text-[11px] font-semibold text-rose-100 uppercase tracking-wider block">
             Total Seluruh Tunggakan
           </span>
-          <div className="mt-2 text-2xl sm:text-3xl font-extrabold font-mono tracking-tight tabular-nums">
+          <div className="mt-1 text-xl sm:text-2xl font-extrabold font-mono tracking-tight tabular-nums">
             {formatRupiah(totalAllArrears)}
           </div>
-          <span className="text-xs text-rose-100 mt-1 block">
+          <span className="text-[11px] text-rose-100 mt-0.5 block">
             Dari {housesWithArrears.length} rumah yang memiliki tanggungan
           </span>
         </div>
 
-        <div className="bg-gradient-to-br from-amber-500 via-orange-500 to-amber-700 text-white p-5 rounded-2xl shadow-md shadow-amber-500/15">
-          <span className="text-xs font-semibold text-amber-100 uppercase tracking-wider block">
+        <div className="bg-gradient-to-br from-amber-500 via-orange-500 to-amber-700 text-white p-3.5 sm:p-4 rounded-2xl shadow-md shadow-amber-500/15">
+          <span className="text-[11px] font-semibold text-amber-100 uppercase tracking-wider block">
             Tunggakan Iuran Bulan Ini ({currentMonthLabel})
           </span>
-          <div className="mt-2 text-2xl font-extrabold font-mono tracking-tight tabular-nums">
+          <div className="mt-1 text-xl sm:text-2xl font-extrabold font-mono tracking-tight tabular-nums">
             {formatRupiah(
               arrearsList.reduce((acc, curr) => acc + curr.duesArrears, 0)
             )}
           </div>
-          <span className="text-xs text-amber-100 mt-1 block">
+          <span className="text-[11px] text-amber-100 mt-0.5 block">
             {arrearsList.filter((a) => a.duesArrears > 0).length} rumah belum lunas iuran {currentMonthLabel}
           </span>
         </div>
 
-        <div className="bg-gradient-to-br from-purple-600 via-violet-600 to-indigo-800 text-white p-5 rounded-2xl shadow-md shadow-purple-600/15">
-          <span className="text-xs font-semibold text-purple-100 uppercase tracking-wider block">
+        <div className="bg-gradient-to-br from-purple-600 via-violet-600 to-indigo-800 text-white p-3.5 sm:p-4 rounded-2xl shadow-md shadow-purple-600/15">
+          <span className="text-[11px] font-semibold text-purple-100 uppercase tracking-wider block">
             Denda Baksos & Tunggakan Lalu
           </span>
-          <div className="mt-2 text-2xl font-extrabold font-mono tracking-tight tabular-nums">
+          <div className="mt-1 text-xl sm:text-2xl font-extrabold font-mono tracking-tight tabular-nums">
             {formatRupiah(
               arrearsList.reduce(
                 (acc, curr) => acc + curr.baksosFineArrears + curr.previousArrears,
@@ -889,58 +889,44 @@ export const ArrearsSection: React.FC<ArrearsSectionProps> = ({
               )
             )}
           </div>
-          <span className="text-xs text-purple-100 mt-1 block">
+          <span className="text-[11px] text-purple-100 mt-0.5 block">
             Akumulasi denda baksos & sisa bulan/tahun lalu
           </span>
         </div>
       </div>
 
       {/* Arrears Detailed Table */}
-      <div className="bg-gradient-to-br from-rose-50/60 via-amber-50/40 to-orange-50/50 dark:from-slate-900 dark:to-rose-950/30 rounded-2xl border border-rose-200 dark:border-rose-800/60 overflow-hidden shadow-md">
-        <div className="p-4 sm:p-5 bg-gradient-to-r from-rose-600 via-orange-600 to-amber-600 text-white">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-rose-200 dark:border-rose-800/60 overflow-hidden shadow-md">
+        <div className="px-4 py-3 sm:px-5 sm:py-3.5 bg-gradient-to-r from-rose-600 via-orange-600 to-amber-600 text-white">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-2.5">
             <div>
               <div className="flex items-center gap-2">
                 <div className="p-1.5 rounded-lg bg-white/20 text-white shrink-0">
-                  <CreditCard className="w-5 h-5 text-amber-300" />
+                  <CreditCard className="w-4 h-4 text-amber-300" />
                 </div>
-                <h3 className="font-extrabold text-base sm:text-lg text-white tracking-tight">
+                <h3 className="font-extrabold text-sm sm:text-base text-white tracking-tight">
                   Daftar Rincian Tunggakan Per Rumah (Blok K2/25 - K3/24)
                 </h3>
               </div>
-
-              {/* Detail Bulan Ditempatkan Tepat di Bawah Judul */}
-              <div className="flex flex-wrap items-center gap-2 mt-2">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-400 text-slate-950 font-black text-xs shadow-xs">
-                  <Calendar className="w-3.5 h-3.5" />
-                  <span>Bulan Berjalan: {currentMonthLabel}</span>
-                </span>
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/25 text-amber-200 text-xs font-semibold border border-white/20">
-                  <Clock className="w-3 h-3 text-amber-300" />
-                  <span>Periode Aktif Rekap Kas Warga</span>
-                </span>
-                <span className="text-xs text-amber-100 hidden lg:inline">
-                  • Otomatis terakumulasi & tersinkronisasi dengan Rekap Kas Per KK
-                </span>
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1 text-[11px] text-amber-100 font-medium">
+                <span className="font-bold text-amber-300">Bulan Berjalan: {currentMonthLabel}</span>
+                <span aria-hidden="true">·</span>
+                <span>{housesWithArrears.length} Rumah Menunggak</span>
+                <span className="hidden lg:inline" aria-hidden="true">·</span>
+                <span className="hidden lg:inline">Tersinkronisasi dengan Rekap Kas Per KK</span>
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <div className="flex items-center gap-2 shrink-0">
               <div className="relative">
-                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2" />
                 <input
                   type="text"
                   placeholder="Cari blok / warga..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-8 pr-3 py-1.5 text-xs bg-white border border-white/40 text-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-300 shadow-2xs w-48 sm:w-56"
+                  className="pl-8 pr-3 py-1.5 text-xs bg-white border border-white/40 text-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-300 shadow-2xs w-44 sm:w-52"
                 />
-              </div>
-
-              {/* Indikator Khusus Warga Menunggak */}
-              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-black/30 rounded-xl border border-white/25 text-xs font-bold text-amber-200 shadow-2xs">
-                <AlertTriangle className="w-3.5 h-3.5 text-amber-300" />
-                <span>Khusus Warga Menunggak ({housesWithArrears.length} Rumah)</span>
               </div>
             </div>
           </div>
@@ -1186,25 +1172,34 @@ export const ArrearsSection: React.FC<ArrearsSectionProps> = ({
             }))}
         </div>
 
-        {/* View Mode 2: Desktop & Tablet Spread Table (>= 768px) */}
-        <div className="hidden md:block overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse whitespace-nowrap">
+        {/* View Mode 2: Compact 1-Page Desktop & Tablet Table (>= 768px, Zero Horizontal Overflow) */}
+        <div className="hidden md:block overflow-x-auto lg:overflow-x-visible">
+          <table className="w-full table-auto text-left text-[11px] lg:text-xs border-collapse">
             <thead>
-              <tr className="bg-slate-100/80 border-b border-slate-200 text-slate-700 font-bold">
-                <th className="py-3 px-3 w-10 text-center">No</th>
-                <th className="py-3 px-3">No Blok</th>
-                <th className="py-3 px-3">Kepala Keluarga</th>
-                <th className="py-3 px-3 text-right">
-                  Iuran Bulan Ini ({currentMonthLabel})
+              <tr className="bg-slate-100/90 border-b border-slate-200 text-slate-700 font-bold leading-tight">
+                <th className="py-2 px-1.5 w-8 text-center">No</th>
+                <th className="py-2 px-2 w-16 whitespace-nowrap">Blok</th>
+                <th className="py-2 px-2 min-w-[115px] max-w-[160px]">Kepala Keluarga</th>
+                <th className="py-2 px-2 w-[92px] text-right whitespace-nowrap">
+                  <span className="block">Iuran</span>
+                  <span className="block text-[10px] font-semibold text-slate-500">{currentMonthLabel}</span>
                 </th>
-                <th className="py-3 px-3 text-right">Tunggakan Bulan/Thn Lalu</th>
-                <th className="py-3 px-3 min-w-[220px]">Keterangan Tunggakan Lalu</th>
-                <th className="py-3 px-3 text-right">Denda Baksos</th>
-                <th className="py-3 px-3 text-right">Total Tunggakan</th>
-                <th className="py-3 px-3 text-center">Status</th>
+                <th className="py-2 px-2 w-[88px] text-right whitespace-nowrap">
+                  <span className="block">Tunggakan</span>
+                  <span className="block text-[10px] font-semibold text-slate-500">Bln/Thn Lalu</span>
+                </th>
+                <th className="py-2 px-2.5 min-w-[155px]">Ket. Tunggakan Lalu</th>
+                <th className="py-2 px-2 w-[112px] text-right whitespace-nowrap">
+                  <span className="block">Denda</span>
+                  <span className="block text-[10px] font-semibold text-slate-500">Baksos</span>
+                </th>
+                <th className="py-2 px-2 w-[108px] text-right whitespace-nowrap">
+                  <span className="block">Total &</span>
+                  <span className="block text-[10px] font-semibold text-slate-500">Status</span>
+                </th>
                 {isAdmin && (
-                  <th className="py-3 px-3 text-center">
-                    Aksi Pengurus (Tagih WA / Cicil / Lunas)
+                  <th className="py-2 px-2 w-[138px] text-center whitespace-nowrap">
+                    Aksi Pengurus
                   </th>
                 )}
               </tr>
@@ -1213,8 +1208,8 @@ export const ArrearsSection: React.FC<ArrearsSectionProps> = ({
               {filteredDelinquentList.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={isAdmin ? 10 : 9}
-                    className="py-10 text-center text-slate-500 font-medium bg-white/60"
+                    colSpan={isAdmin ? 9 : 8}
+                    className="py-8 text-center text-slate-500 font-medium bg-white/60"
                   >
                     🎉 Tidak ada data warga yang menunggak {searchQuery ? 'dengan kata kunci pencarian ini' : '(Seluruh KK Tertib & Lunas)'}.
                   </td>
@@ -1230,107 +1225,92 @@ export const ArrearsSection: React.FC<ArrearsSectionProps> = ({
                         : 'Rumah Kosong')
                     : (item.house.headName?.trim() || item.house.duesHeadNameOverride || '-');
                   const duesNote = item.previousArrearsNote || item.house.previousArrearsNote || '';
+                  const agendaTitles =
+                    item.unpaidBaksosList && item.unpaidBaksosList.length > 0
+                      ? item.unpaidBaksosList.map((a: any) => a.title || 'Baksos').join(', ')
+                      : '';
 
                   return (
                     <tr
                       key={item.house.id}
-                      className={`transition-colors ${
+                      className={`group transition-colors ${
                         isVacant
                           ? 'bg-slate-100/90 text-slate-600 hover:bg-slate-200/50'
                           : hasDebt
-                          ? 'bg-rose-50/25 hover:bg-rose-50/50'
-                          : 'hover:bg-slate-50'
+                          ? 'bg-white hover:bg-rose-50/50'
+                          : 'bg-white hover:bg-slate-50'
                       }`}
                     >
-                      <td className="py-3 px-3 text-center text-slate-400 font-mono tabular-nums">
+                      <td className="py-2 px-1.5 text-center text-slate-400 font-mono tabular-nums align-middle">
                         {idx + 1}
                       </td>
-                      <td className="py-3 px-3 font-bold font-mono">
+                      <td className="py-2 px-2 font-bold font-mono whitespace-nowrap align-middle">
                         <span
                           className={
                             isVacant
-                              ? 'px-2 py-0.5 rounded bg-slate-400 text-white text-xs'
+                              ? 'px-1.5 py-0.5 rounded bg-slate-400 text-white text-[11px]'
                               : 'text-emerald-800'
                           }
                         >
-                          Blok {item.house.blockNumber}
+                          {item.house.blockNumber}
                         </span>
                       </td>
                       <td
-                        className={`py-3 px-3 font-semibold ${
+                        className={`py-2 px-2 font-semibold leading-snug break-words align-middle ${
                           isVacant ? 'text-slate-600 italic' : 'text-slate-800'
                         }`}
                       >
-                        <div className="flex flex-col">
-                          <span>{payerName}</span>
-                        </div>
+                        {payerName}
                       </td>
-                      <td className="py-3 px-3 text-right font-mono tabular-nums">
+                      <td className="py-2 px-2 text-right font-mono tabular-nums whitespace-nowrap align-middle">
                         {item.house.occupancy === 'Kosong' ? (
-                          <span className="text-slate-400 italic">
-                            Tanpa Iuran Rutin (Kosong)
-                          </span>
+                          <span className="text-slate-400 italic text-[10px]">Kosong</span>
                         ) : item.duesArrears > 0 ? (
                           <div>
                             <span className="text-rose-600 font-semibold">
                               {formatRupiah(item.duesArrears)}
                             </span>
                             {paidPartialDues > 0 && (
-                              <span className="block text-[10px] text-amber-700">
-                                Dicicil {formatRupiah(paidPartialDues)}
+                              <span className="block text-[10px] font-sans text-amber-700 leading-tight">
+                                Cicil {formatRupiah(paidPartialDues)}
                               </span>
                             )}
                           </div>
                         ) : item.house.duesStatus === 'Bayar Lebih' ? (
-                          <div>
-                            <span className="text-indigo-700 font-bold">
-                              Rp 0 (Bayar Lebih {item.house.duesPaidMonths || 2} Bln)
-                            </span>
-                            {(item.house.duesPrepaidBalance || 0) > 0 && (
-                              <span className="block text-[10px] text-emerald-700">
-                                Deposit +{formatRupiah(item.house.duesPrepaidBalance || 0)}
-                              </span>
-                            )}
-                          </div>
+                          <span className="text-indigo-700 font-bold text-[11px]">
+                            Rp 0 <span className="font-sans font-medium text-[10px]">(Lebih)</span>
+                          </span>
                         ) : (
-                          <span className="text-emerald-600 font-medium">Rp 0 (Lunas)</span>
+                          <span className="text-emerald-600 font-medium">
+                            Rp 0 <span className="font-sans text-[10px]">(Lunas)</span>
+                          </span>
                         )}
                       </td>
-                      <td className="py-3 px-3 text-right font-mono tabular-nums">
-                        <div className="flex items-center justify-end gap-1">
-                          <span
-                            className={
-                              item.previousArrears > 0
-                                ? 'text-rose-700 font-bold'
-                                : 'text-slate-400'
-                            }
-                          >
-                            {formatRupiah(item.previousArrears)}
-                          </span>
-                        </div>
+                      <td className="py-2 px-2 text-right font-mono tabular-nums whitespace-nowrap align-middle">
+                        <span
+                          className={
+                            item.previousArrears > 0
+                              ? 'text-rose-700 font-bold'
+                              : 'text-slate-400'
+                          }
+                        >
+                          {formatRupiah(item.previousArrears)}
+                        </span>
                       </td>
-                      <td className="py-3 px-3.5 whitespace-normal break-words min-w-[220px] max-w-[450px]">
+                      <td className="py-2 px-2.5 whitespace-normal break-words leading-snug align-middle">
                         {duesNote ? (
-                          <div className="flex items-start justify-between gap-2 p-2.5 rounded-xl bg-amber-50/90 border border-amber-200/90 text-amber-950 text-xs shadow-2xs leading-relaxed group">
-                            <div className="flex items-start gap-1.5 flex-1 min-w-0">
-                              <FileText className="w-3.5 h-3.5 text-rose-600 shrink-0 mt-0.5" />
-                              <div className="flex-1 min-w-0">
-                                <span className="text-[10px] font-bold text-rose-800 block uppercase tracking-wider">
-                                  Keterangan Tunggakan Lalu:
-                                </span>
-                                <span className="font-semibold text-slate-800 break-words select-text">
-                                  {duesNote}
-                                </span>
-                              </div>
-                            </div>
+                          <div className="flex items-start justify-between gap-1.5">
+                            <span className="text-[11px] font-medium text-slate-700 break-words select-text">
+                              {duesNote}
+                            </span>
                             {isAdmin && (
                               <button
                                 type="button"
                                 onClick={() => handleOpenEditArrears(item.house, duesNote, item.previousArrears)}
-                                className="p-1 rounded-md text-amber-700 hover:text-amber-950 hover:bg-amber-200/60 transition-colors cursor-pointer shrink-0 opacity-70 group-hover:opacity-100"
+                                className="p-0.5 rounded text-amber-700 hover:text-amber-950 hover:bg-amber-100 transition-colors cursor-pointer shrink-0 opacity-50 group-hover:opacity-100"
                                 title="Edit Keterangan Tunggakan Lalu (tersinkronisasi ke Tabel Rekap Pembayaran Iuran Per KK)"
                               >
-                                <Edit2 className="w-3.5 h-3.5" />
+                                <Edit2 className="w-3 h-3" />
                               </button>
                             )}
                           </div>
@@ -1338,107 +1318,98 @@ export const ArrearsSection: React.FC<ArrearsSectionProps> = ({
                           <button
                             type="button"
                             onClick={() => handleOpenEditArrears(item.house, '', item.previousArrears)}
-                            className="py-1 px-2.5 rounded-lg bg-amber-50/70 hover:bg-amber-100 border border-dashed border-amber-300 text-amber-800 text-[11px] font-medium flex items-center gap-1 transition-colors cursor-pointer"
+                            className="text-amber-700 hover:text-amber-900 hover:underline text-[11px] font-medium inline-flex items-center gap-1 transition-colors cursor-pointer opacity-75 hover:opacity-100"
                             title="Tambah Keterangan Tunggakan Lalu KK ini"
                           >
-                            <Edit2 className="w-3 h-3 text-amber-600" />
-                            <span>+ Keterangan</span>
+                            <Edit2 className="w-3 h-3" />
+                            <span>+ Ket.</span>
                           </button>
                         ) : (
                           <span className="text-slate-400 font-mono text-[11px]">-</span>
                         )}
                       </td>
                       {/* Denda Baksos Column */}
-                      <td className="py-3 px-3 text-right font-mono tabular-nums">
-                        <div className="flex items-center justify-end gap-1">
-                          <span
-                            className={
-                              item.baksosFineArrears > 0
-                                ? 'text-amber-800 font-black'
-                                : 'text-slate-400'
-                            }
-                          >
-                            {formatRupiah(item.baksosFineArrears)}
-                          </span>
-                        </div>
+                      <td className="py-2 px-2 text-right font-mono tabular-nums align-middle">
+                        <span
+                          className={`whitespace-nowrap ${
+                            item.baksosFineArrears > 0
+                              ? 'text-amber-800 font-bold'
+                              : 'text-slate-400'
+                          }`}
+                        >
+                          {formatRupiah(item.baksosFineArrears)}
+                        </span>
                         {item.baksosFineArrears > 0 && (
-                          <div className="mt-0.5">
-                            <span className="inline-block px-1.5 py-0.5 rounded bg-rose-100 text-rose-900 border border-rose-300 font-sans text-[10px] font-bold shadow-2xs whitespace-nowrap">
-                              Denda 10 Ribu (Tidak Hadir)
+                          <div className="font-sans leading-tight mt-0.5">
+                            <span className="block text-[10px] font-semibold text-rose-700 whitespace-nowrap">
+                              Denda 10rb · Tidak Hadir
+                            </span>
+                            {agendaTitles ? (
+                              <span
+                                className="block text-[10px] text-slate-500 max-w-[110px] truncate ml-auto"
+                                title={`Agenda: ${agendaTitles}`}
+                              >
+                                {agendaTitles}
+                              </span>
+                            ) : item.previousBaksosArrearsNote ? (
+                              <span
+                                className="block text-[10px] text-slate-500 italic max-w-[110px] truncate ml-auto"
+                                title={item.previousBaksosArrearsNote}
+                              >
+                                {item.previousBaksosArrearsNote}
+                              </span>
+                            ) : null}
+                          </div>
+                        )}
+                      </td>
+                      <td className="py-2 px-2 text-right font-mono tabular-nums whitespace-nowrap align-middle">
+                        {hasDebt ? (
+                          <div>
+                            <span className="text-rose-700 font-black text-xs lg:text-[13px]">
+                              {formatRupiah(item.totalArrears)}
+                            </span>
+                            <span className="block font-sans text-[10px] font-bold text-rose-600 leading-tight">
+                              Tertunggak{item.baksosFineArrears > 0 ? ' · +Denda' : ''}
+                            </span>
+                          </div>
+                        ) : (
+                          <div>
+                            <span className="text-emerald-700 font-black">Rp 0</span>
+                            <span className="block font-sans text-[10px] font-bold text-emerald-700 leading-tight">
+                              Lunas
                             </span>
                           </div>
                         )}
-                        {item.unpaidBaksosList && item.unpaidBaksosList.length > 0 ? (
-                          <span
-                            className="block text-[10px] text-slate-600 font-semibold max-w-[200px] ml-auto leading-tight mt-0.5"
-                            title={`Absen Presensi Baksos: ${item.unpaidBaksosList.map((a: any) => a.title).join(', ')}`}
-                          >
-                            (Agenda: {item.unpaidBaksosList.map((a: any) => a.title || 'Baksos').join(', ')})
-                          </span>
-                        ) : item.previousBaksosArrearsNote ? (
-                          <span
-                            className="block text-[10px] text-slate-500 italic max-w-[140px] truncate ml-auto"
-                            title={item.previousBaksosArrearsNote}
-                          >
-                            ({item.previousBaksosArrearsNote})
-                          </span>
-                        ) : null}
-                      </td>
-                      <td className="py-3 px-3 text-right font-mono font-black text-sm tabular-nums">
-                        {hasDebt ? (
-                          <div>
-                            <span className="text-rose-700">{formatRupiah(item.totalArrears)}</span>
-                            {item.baksosFineArrears > 0 && (
-                              <span className="block text-[10px] font-sans font-bold text-amber-800">
-                                (Termasuk Denda 10 Ribu: {formatRupiah(item.baksosFineArrears)})
-                              </span>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-emerald-700">Rp 0</span>
-                        )}
-                      </td>
-                      <td className="py-3 px-3 text-center">
-                        {hasDebt ? (
-                          <span className="font-bold text-rose-600">
-                            Tertunggak
-                          </span>
-                        ) : (
-                          <span className="font-bold text-emerald-700">
-                            Lunas
-                          </span>
-                        )}
                       </td>
                       {isAdmin && (
-                        <td className="py-3 px-3 text-center">
-                          <div className="flex items-center justify-center gap-1.5">
+                        <td className="py-2 px-2 text-center whitespace-nowrap align-middle">
+                          <div className="flex items-center justify-center gap-1">
                             {hasDebt && (
                               <>
                                 <button
                                   type="button"
                                   onClick={() => handleSendWAReminder(item)}
-                                  className="flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-300 rounded-lg text-[11px] font-semibold transition-colors cursor-pointer"
-                                  title="Kirim Tagihan WhatsApp (Khusus Pengurus)"
+                                  className="inline-flex items-center gap-1 px-1.5 py-1 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-300 rounded-md text-[10px] font-bold transition-colors cursor-pointer"
+                                  title="Kirim Tagihan WhatsApp"
                                 >
-                                  <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
-                                  <span>Tagih WA</span>
+                                  <MessageCircle className="w-3 h-3 text-emerald-600" />
+                                  <span>WA</span>
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => handleOpenPartialPay(item)}
-                                  className="flex items-center gap-1 px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-[11px] font-semibold transition-colors cursor-pointer shadow-2xs"
+                                  className="inline-flex items-center gap-0.5 px-1.5 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-md text-[10px] font-bold transition-colors cursor-pointer shadow-2xs"
                                   title="Bayar Sebagian / Cicil Tunggakan Rumah Ini"
                                 >
-                                  <Banknote className="w-3.5 h-3.5" />
-                                  <span>Bayar Sebagian</span>
+                                  <span>Cicil</span>
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => handlePayAllArrears(item)}
-                                  className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-semibold transition-colors cursor-pointer shadow-2xs"
-                                  title="Tandai Seluruh Tunggakan Lunas & Masukkan ke Kas"
+                                  className="px-1.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-[10px] font-bold transition-colors cursor-pointer shadow-2xs"
+                                  title="Lunaskan Seluruh Tunggakan & Masukkan ke Kas"
                                 >
-                                  Lunaskan
+                                  Lunas
                                 </button>
                               </>
                             )}
@@ -1449,7 +1420,7 @@ export const ArrearsSection: React.FC<ArrearsSectionProps> = ({
                                 className="p-1 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded transition-colors cursor-pointer"
                                 title="Hapus Tunggakan Bulan Lalu & Denda"
                               >
-                                <Trash2 className="w-3.5 h-3.5" />
+                                <Trash2 className="w-3 h-3" />
                               </button>
                             )}
                           </div>
@@ -1459,6 +1430,31 @@ export const ArrearsSection: React.FC<ArrearsSectionProps> = ({
                   );
                 }))}
             </tbody>
+            {filteredDelinquentList.length > 0 && (
+              <tfoot>
+                <tr className="bg-slate-100/95 border-t-2 border-slate-200 text-slate-900 font-bold text-[11px] lg:text-xs">
+                  <td colSpan={3} className="py-2.5 px-2.5 text-right">
+                    Total ({filteredDelinquentList.length} Rumah):
+                  </td>
+                  <td className="py-2.5 px-2 text-right font-mono tabular-nums text-rose-700 whitespace-nowrap">
+                    {formatRupiah(filteredDelinquentList.reduce((s, r) => s + r.duesArrears, 0))}
+                  </td>
+                  <td className="py-2.5 px-2 text-right font-mono tabular-nums text-rose-700 whitespace-nowrap">
+                    {formatRupiah(filteredDelinquentList.reduce((s, r) => s + r.previousArrears, 0))}
+                  </td>
+                  <td className="py-2.5 px-2.5 text-slate-500 font-normal text-[10px]">
+                    Akumulasi komponen tertunggak
+                  </td>
+                  <td className="py-2.5 px-2 text-right font-mono tabular-nums text-amber-800 whitespace-nowrap">
+                    {formatRupiah(filteredDelinquentList.reduce((s, r) => s + r.baksosFineArrears, 0))}
+                  </td>
+                  <td className="py-2.5 px-2 text-right font-mono tabular-nums font-black text-rose-700 whitespace-nowrap">
+                    {formatRupiah(filteredDelinquentList.reduce((s, r) => s + r.totalArrears, 0))}
+                  </td>
+                  {isAdmin && <td className="py-2.5 px-2" />}
+                </tr>
+              </tfoot>
+            )}
           </table>
         </div>
       </div>

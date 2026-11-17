@@ -1680,7 +1680,7 @@ export function descMentionsPeriod(desc: string, periodLabel: string, targetKey:
   return false;
 }
 
-function isBaksosTxExclusivelyForPriorPeriod(
+function isTxExclusivelyForOtherPeriod(
   tx: { description?: string },
   targetKey: string
 ): boolean {
@@ -1706,6 +1706,33 @@ function isBaksosTxExclusivelyForPriorPeriod(
   return mentionedKeys.some((k) => k < targetKey);
 }
 
+export function getMergedPeriodSnapshot(
+  periodHistory: ResidentHouse['periodHistory'] | undefined,
+  targetKey?: string | null,
+  periodLabel?: string
+): NonNullable<ResidentHouse['periodHistory']>[string] | undefined {
+  if (!periodHistory) return undefined;
+  const byLabel = periodLabel ? periodHistory[periodLabel] : undefined;
+  const byKey = targetKey ? periodHistory[targetKey] : undefined;
+  if (!byLabel && !byKey) return undefined;
+  if (!byLabel) return byKey;
+  if (!byKey) return byLabel;
+
+  const labelNewer =
+    byLabel.updatedAt && byKey.updatedAt
+      ? byLabel.updatedAt > byKey.updatedAt
+      : false;
+  const base = labelNewer ? byKey : byLabel;
+  const overlay = labelNewer ? byLabel : byKey;
+  const merged: Record<string, unknown> = { ...base };
+  Object.entries(overlay).forEach(([k, v]) => {
+    if (v !== undefined) {
+      merged[k] = v;
+    }
+  });
+  return merged as NonNullable<ResidentHouse['periodHistory']>[string];
+}
+
 /**
  * Mendeteksi apakah suatu periode iuran yang belum lunas telah diselesaikan
  * melalui pembayaran tunggakan di bulan kemudian (atau transaksi pelunasan di Buku Kas).
@@ -1720,9 +1747,10 @@ export function findArrearSettlementForPeriod(
   if (!house || !targetKey) return null;
 
   // 1. Cek periodHistory jika sudah eksplisit tercatat settlementMonth / isArrearSettledLater
-  if (house.periodHistory) {
-    const snap = house.periodHistory[targetKey] || house.periodHistory[periodLabel];
-    if (snap?.settlementMonth || snap?.isArrearSettledLater) {
+  const snap = getMergedPeriodSnapshot(house.periodHistory, targetKey, periodLabel);
+  if (snap?.settlementMonth || snap?.isArrearSettledLater) {
+    const sKey = snap.settlementMonth ? parseIndonesianMonthYearToKey(snap.settlementMonth) : null;
+    if (!sKey || sKey > targetKey) {
       const sMonth =
         snap.settlementMonth ||
         (snap.paidDate ? formatMonthYearFromDate(snap.paidDate) : 'Pelunasan');
@@ -1770,7 +1798,7 @@ export function findArrearSettlementForPeriod(
 
   // 4. Jika KK ini sudah tidak memiliki sisa tunggakan lalu (previousArrears === 0),
   // dan di catatan sebelumnya (previousArrearsNote) tertera periode ini,
-  // cari transaksi pembayaran tunggakan atau pelunasan untuk menentukan bulan pelunasannya
+  // cari transaksi pembayaran tunggakan di bulan setelah targetKey untuk menentukan bulan pelunasannya
   if (
     house.previousArrears === 0 &&
     house.previousArrearsNote &&
@@ -1779,7 +1807,9 @@ export function findArrearSettlementForPeriod(
   ) {
     const anyTungTx = transactions.find((t) => {
       if (t.type !== 'masuk' || !isTunggakanTx(t) || isBaksosFineTx(t)) return false;
-      return isTransactionForHouse(t, house);
+      if (!isTransactionForHouse(t, house)) return false;
+      const tKey = getMonthKeyFromDate(t.date);
+      return Boolean(tKey && tKey > targetKey);
     });
     if (anyTungTx) {
       const sMonth =
@@ -1789,10 +1819,13 @@ export function findArrearSettlementForPeriod(
         return { settlementMonth: sMonth, paidDate: anyTungTx.date };
       }
     }
-    return {
-      settlementMonth: house.duesPaidDate ? formatMonthYearFromDate(house.duesPaidDate) : 'Pelunasan',
-      paidDate: house.duesPaidDate,
-    };
+    const paidDateKey = house.duesPaidDate ? getMonthKeyFromDate(house.duesPaidDate) : '';
+    if (paidDateKey && paidDateKey > targetKey) {
+      return {
+        settlementMonth: formatMonthYearFromDate(house.duesPaidDate!),
+        paidDate: house.duesPaidDate,
+      };
+    }
   }
 
   return null;
@@ -1874,7 +1907,7 @@ export function getHouseStatusForPeriod(
     };
   }
 
-  const periodSnapshot = house.periodHistory?.[targetKey] || (targetKey ? house.periodHistory?.[periodLabel] : undefined);
+  const periodSnapshot = getMergedPeriodSnapshot(house.periodHistory, targetKey, periodLabel);
 
   // Cek apakah periode ini memiliki transaksi iuran masuk langsung pada periode yang sama
   const hasDirectTargetTx = transactions.some((t) => {
@@ -2171,10 +2204,12 @@ export function getHouseStatusForPeriod(
     }
   }
 
-  // 3. Cek transaksi langsung di Buku Kas untuk rumah ini pada periode tersebut
+  // 3. Cek transaksi langsung di Buku Kas untuk rumah ini pada periode tersebut (abaikan pelunasan bulan tertunggak)
   const matchingIuranTxs = transactions.filter((t) => {
     if (t.type !== 'masuk' || !isPureIuranTx(t) || !blockRegex.test(t.description)) return false;
-    return getMonthKeyFromDate(t.date) === targetKey;
+    if (getMonthKeyFromDate(t.date) !== targetKey) return false;
+    if (targetKey && isTxExclusivelyForOtherPeriod(t, targetKey)) return false;
+    return true;
   });
   const sumIuranFromTxs = matchingIuranTxs.reduce((sum, t) => sum + t.amount, 0);
 
@@ -2372,7 +2407,7 @@ export function getHouseBaksosForPeriod(
 
   // Transaksi di bulan ini yang memang membayar agenda/denda bulan ini (bukan semata-mata pelunasan tunggakan baksos bulan lalu)
   const samePeriodDirectBaksosTxs = sameMonthBaksosTxs.filter(
-    (t) => !targetKey || !isBaksosTxExclusivelyForPriorPeriod(t, targetKey)
+    (t) => !targetKey || !isTxExclusivelyForOtherPeriod(t, targetKey)
   );
 
   // Paid baksos agendas pada periode ini
@@ -2381,9 +2416,9 @@ export function getHouseBaksosForPeriod(
     return isPaid;
   });
 
-  // Cek periodHistory untuk periode ini
+  // Cek periodHistory untuk periode ini (gabungkan key targetKey & periodLabel agar field tidak saling menimpa)
   const periodHist = targetKey
-    ? house.periodHistory?.[targetKey] || (periodLabel ? house.periodHistory?.[periodLabel] : undefined)
+    ? getMergedPeriodSnapshot(house.periodHistory, targetKey, periodLabel)
     : undefined;
 
   // Cek apakah denda baksos periode lalu ini dilunasi di bulan berikutnya (bukan di targetKey)
@@ -2422,7 +2457,11 @@ export function getHouseBaksosForPeriod(
       ? laterMonthBaksosTx ||
         (periodHist?.baksosPaidDate && getMonthKeyFromDate(periodHist.baksosPaidDate) > targetKey
           ? { date: periodHist.baksosPaidDate }
-          : undefined)
+          : undefined) ||
+        allHouseBaksosTxs.find((t) => {
+          const tKey = getMonthKeyFromDate(t.date);
+          return Boolean(tKey && tKey > targetKey && !isTxExclusivelyForOtherPeriod(t, targetKey));
+        })
       : undefined;
 
   const isDendaSettledLater = Boolean(
@@ -2432,6 +2471,7 @@ export function getHouseBaksosForPeriod(
   const dendaSettlementMonth: string | null = isDendaSettledLater
     ? periodHist?.baksosSettlementMonth ||
       (laterMonthBaksosTx ? formatMonthYearFromDate(laterMonthBaksosTx.date) : null) ||
+      (legacySettledLaterTx ? formatMonthYearFromDate(legacySettledLaterTx.date) : null) ||
       (periodHist?.baksosPaidDate ? formatMonthYearFromDate(periodHist.baksosPaidDate) : null) ||
       'Bulan Berikutnya'
     : null;
@@ -2449,9 +2489,10 @@ export function getHouseBaksosForPeriod(
       ? (periodHist?.customBaksosFineAmount || 10000)
       : 0;
 
-  // Jika denda periode lalu dilunasi di bulan berikutnya, bulan tertunggak HANYA ditandai lunas tanpa menambahkan nominalnya (dendaPaid = txPaidAmount = 0)
+  // Jika denda periode lalu dilunasi di bulan berikutnya, bulan tertunggak HANYA ditandai lunas tanpa menambahkan nominalnya
+  const directSameMonthTxPaid = samePeriodDirectBaksosTxs.reduce((sum, t) => sum + t.amount, 0);
   const dendaPaid = isDendaSettledLater
-    ? txPaidAmount
+    ? directSameMonthTxPaid
     : Math.max(txPaidAmount, agendaPaidAmount, periodHistPaid);
 
   const hasDirectPeriodPayment =
@@ -2484,9 +2525,11 @@ export function getHouseBaksosForPeriod(
       ? 0
       : periodHistFine !== undefined
       ? periodHistFine
+      : periodHist?.baksosStatus === 'Belum Bayar'
+      ? (matchingAgendas[0]?.fineAmount || 10000)
       : calculatedUnpaid > 0
       ? calculatedUnpaid
-      : (house.customBaksosFineAmount && house.customBaksosFineAmount > 0)
+      : !targetKey && house.customBaksosFineAmount && house.customBaksosFineAmount > 0
       ? house.customBaksosFineAmount
       : 0;
 
