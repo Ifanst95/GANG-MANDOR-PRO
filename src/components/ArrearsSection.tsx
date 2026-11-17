@@ -160,6 +160,9 @@ export const ArrearsSection: React.FC<ArrearsSectionProps> = ({
         duesArrears,
         unpaidBaksosList: row.unpaidBaksosList,
         baksosFineArrears,
+        baksosUnpaidMonths: row.baksosUnpaidMonths,
+        baksosUnpaidMonthsText: row.baksosUnpaidMonthsText,
+        baksosUnpaidMonthDetails: row.baksosUnpaidMonthDetails,
         previousArrears,
         previousArrearsNote,
         previousBaksosArrears,
@@ -190,7 +193,8 @@ export const ArrearsSection: React.FC<ArrearsSectionProps> = ({
       item.house.headName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       payerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (item.previousArrearsNote && item.previousArrearsNote.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (item.previousBaksosArrearsNote && item.previousBaksosArrearsNote.toLowerCase().includes(searchQuery.toLowerCase()));
+      (item.previousBaksosArrearsNote && item.previousBaksosArrearsNote.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (item.baksosUnpaidMonthsText && item.baksosUnpaidMonthsText.toLowerCase().includes(searchQuery.toLowerCase()));
 
     return matchQuery;
   });
@@ -584,7 +588,12 @@ export const ArrearsSection: React.FC<ArrearsSectionProps> = ({
 
     housesWithArrears.forEach((item) => {
       const payerName = item.house.duesHeadNameOverride || item.house.headName;
-      const note = item.previousArrearsNote ? ` — Ket: ${item.previousArrearsNote}` : '';
+      const notes: string[] = [];
+      if (item.previousArrearsNote) notes.push(item.previousArrearsNote);
+      if (item.baksosFineArrears > 0 && item.baksosUnpaidMonthsText) {
+        notes.push(`Denda Baksos: ${item.baksosUnpaidMonthsText}`);
+      }
+      const note = notes.length > 0 ? ` — Ket: ${notes.join(' | ')}` : '';
       text += `• Blok ${item.house.blockNumber} (${payerName}): ${formatRupiah(item.totalArrears)}${note}\n`;
     });
 
@@ -625,6 +634,7 @@ export const ArrearsSection: React.FC<ArrearsSectionProps> = ({
       totalArrears: item.totalArrears,
       previousArrearsNote: item.previousArrearsNote,
       previousBaksosArrearsNote: item.previousBaksosArrearsNote,
+      baksosUnpaidMonthsText: item.baksosUnpaidMonthsText,
       bankName: bankInfo ? bankInfo.split(' ')[0] || TREASURER_BANK.bankName : TREASURER_BANK.bankName,
       accountNumber: TREASURER_BANK.accountNumber,
       accountName: `${TREASURER_BANK.accountName} (${TREASURER_BANK.role})`,
@@ -640,7 +650,11 @@ export const ArrearsSection: React.FC<ArrearsSectionProps> = ({
       const payerName = item.house.duesHeadNameOverride || item.house.headName;
       const details = [];
       if (item.duesArrears > 0) details.push(`Iuran: ${formatRupiah(item.duesArrears)}`);
-      if (item.baksosFineArrears > 0) details.push(`Denda: ${formatRupiah(item.baksosFineArrears)}`);
+      if (item.baksosFineArrears > 0) {
+        details.push(
+          `Denda Baksos${item.baksosUnpaidMonthsText ? ` (${item.baksosUnpaidMonthsText})` : ''}: ${formatRupiah(item.baksosFineArrears)}`
+        );
+      }
       if (item.previousArrears > 0) details.push(`Lalu: ${formatRupiah(item.previousArrears)}`);
       const detailStr = details.length > 0 ? ` (${details.join(', ')})` : '';
       formattedList += `${idx + 1}. *Blok ${item.house.blockNumber}* - ${payerName}: *${formatRupiah(item.totalArrears)}*${detailStr}\n`;
@@ -1006,7 +1020,8 @@ export const ArrearsSection: React.FC<ArrearsSectionProps> = ({
                             <span className="text-rose-700">{formatRupiah(item.totalArrears)}</span>
                             {item.baksosFineArrears > 0 && (
                               <span className="block text-[10px] font-sans font-bold text-amber-800">
-                                (Termasuk Denda 10 Ribu)
+                                (Termasuk Denda {formatRupiah(item.baksosFineArrears)}
+                                {item.baksosUnpaidMonthsText ? ` · ${item.baksosUnpaidMonthsText}` : ''})
                               </span>
                             )}
                           </div>
@@ -1051,15 +1066,16 @@ export const ArrearsSection: React.FC<ArrearsSectionProps> = ({
                             {formatRupiah(item.baksosFineArrears)}
                           </strong>
                           <span className="inline-block mt-0.5 px-1.5 py-0.5 bg-rose-100 text-rose-900 border border-rose-300 rounded font-sans text-[10px] font-bold shadow-2xs">
-                            Denda 10 Ribu (Tidak Hadir)
+                            Tidak Hadir Baksos
                           </span>
+                          {item.baksosUnpaidMonthsText && (
+                            <span className="block text-[10.5px] text-rose-800 font-bold leading-tight mt-1">
+                              Bulan: {item.baksosUnpaidMonthsText}
+                            </span>
+                          )}
                           {item.unpaidBaksosList && item.unpaidBaksosList.length > 0 ? (
                             <span className="block text-[10px] text-slate-600 font-semibold leading-tight mt-0.5">
                               (Agenda: {item.unpaidBaksosList.map((a: any) => a.title || 'Baksos').join(', ')})
-                            </span>
-                          ) : item.previousBaksosArrearsNote ? (
-                            <span className="block text-[10px] text-slate-500 italic">
-                              ({item.previousBaksosArrearsNote})
                             </span>
                           ) : null}
                         </div>
@@ -1189,9 +1205,9 @@ export const ArrearsSection: React.FC<ArrearsSectionProps> = ({
                   <span className="block text-[10px] font-semibold text-slate-500">Bln/Thn Lalu</span>
                 </th>
                 <th className="py-2 px-2.5 min-w-[155px]">Ket. Tunggakan Lalu</th>
-                <th className="py-2 px-2 w-[112px] text-right whitespace-nowrap">
+                <th className="py-2 px-2 min-w-[130px] text-right whitespace-nowrap">
                   <span className="block">Denda</span>
-                  <span className="block text-[10px] font-semibold text-slate-500">Baksos</span>
+                  <span className="block text-[10px] font-semibold text-slate-500">Baksos &amp; Bulan</span>
                 </th>
                 <th className="py-2 px-2 w-[108px] text-right whitespace-nowrap">
                   <span className="block">Total &</span>
@@ -1340,25 +1356,26 @@ export const ArrearsSection: React.FC<ArrearsSectionProps> = ({
                           {formatRupiah(item.baksosFineArrears)}
                         </span>
                         {item.baksosFineArrears > 0 && (
-                          <div className="font-sans leading-tight mt-0.5">
+                          <div className="font-sans leading-tight mt-0.5 space-y-0.5">
                             <span className="block text-[10px] font-semibold text-rose-700 whitespace-nowrap">
-                              Denda 10rb · Tidak Hadir
+                              Tidak Hadir Baksos
                             </span>
-                            {agendaTitles ? (
+                            {item.baksosUnpaidMonthsText && (
                               <span
-                                className="block text-[10px] text-slate-500 max-w-[110px] truncate ml-auto"
+                                className="inline-block text-[10px] font-bold text-amber-900 bg-amber-100/90 border border-amber-300 rounded px-1.5 py-0.5 whitespace-normal max-w-[155px] text-right leading-tight"
+                                title={`Bulan Denda Baksos: ${item.baksosUnpaidMonthsText}`}
+                              >
+                                Bulan: {item.baksosUnpaidMonthsText}
+                              </span>
+                            )}
+                            {agendaTitles && (
+                              <span
+                                className="block text-[9.5px] text-slate-500 max-w-[140px] truncate ml-auto"
                                 title={`Agenda: ${agendaTitles}`}
                               >
                                 {agendaTitles}
                               </span>
-                            ) : item.previousBaksosArrearsNote ? (
-                              <span
-                                className="block text-[10px] text-slate-500 italic max-w-[110px] truncate ml-auto"
-                                title={item.previousBaksosArrearsNote}
-                              >
-                                {item.previousBaksosArrearsNote}
-                              </span>
-                            ) : null}
+                            )}
                           </div>
                         )}
                       </td>
@@ -1489,9 +1506,14 @@ export const ArrearsSection: React.FC<ArrearsSectionProps> = ({
                     {formatRupiah(partialPayItem.previousArrears)}
                   </span>
                 </div>
-                <div className="flex justify-between text-slate-600">
-                  <span>Denda Bakti Sosial:</span>
-                  <span className="font-mono font-semibold">
+                <div className="flex justify-between text-slate-600 gap-2">
+                  <span>
+                    Denda Bakti Sosial
+                    {partialPayItem.baksosUnpaidMonthsText
+                      ? ` (${partialPayItem.baksosUnpaidMonthsText})`
+                      : ''}:
+                  </span>
+                  <span className="font-mono font-semibold shrink-0">
                     {formatRupiah(partialPayItem.baksosFineArrears)}
                   </span>
                 </div>
@@ -1764,6 +1786,11 @@ export const ArrearsSection: React.FC<ArrearsSectionProps> = ({
                               <div className="p-2 rounded-xl bg-rose-50 border border-rose-200 text-rose-900">
                                 <span className="block text-[10px] text-rose-700 font-sans">Denda Baksos:</span>
                                 <strong>{formatRupiah(currentTarget.baksosFineArrears)}</strong>
+                                {currentTarget.baksosFineArrears > 0 && currentTarget.baksosUnpaidMonthsText && (
+                                  <span className="block text-[9.5px] font-sans font-bold text-rose-700 mt-0.5 leading-tight">
+                                    ({currentTarget.baksosUnpaidMonthsText})
+                                  </span>
+                                )}
                               </div>
                               <div className="p-2 rounded-xl bg-purple-50 border border-purple-200 text-purple-900">
                                 <span className="block text-[10px] text-purple-700 font-sans">Tunggakan Lalu:</span>
@@ -2274,7 +2301,12 @@ export const ArrearsSection: React.FC<ArrearsSectionProps> = ({
                       </strong>
                       {singleBillingHouse.baksosFineArrears > 0 && (
                         <span className="inline-block px-1.5 py-0.5 rounded bg-rose-100 text-rose-900 border border-rose-300 text-[9px] font-bold mt-0.5 shadow-2xs">
-                          Denda 10 Ribu (Tidak Hadir)
+                          Tidak Hadir Baksos
+                        </span>
+                      )}
+                      {singleBillingHouse.baksosFineArrears > 0 && singleBillingHouse.baksosUnpaidMonthsText && (
+                        <span className="block text-[9.5px] text-rose-800 font-bold leading-tight mt-0.5">
+                          Bulan: {singleBillingHouse.baksosUnpaidMonthsText}
                         </span>
                       )}
                       {singleBillingHouse.unpaidBaksosList && singleBillingHouse.unpaidBaksosList.length > 0 && (

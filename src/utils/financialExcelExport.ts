@@ -468,10 +468,12 @@ export function exportFinancialReportToExcel({
         'Periode Lunas': isPureKosong ? '-' : `${lunasPeriodsCount} dari ${sortedAllPeriods.length} Periode`,
         'Total Iuran Rutin (Rp)': totalIuranAll,
         'Total Denda Baksos (Rp)': totalDendaAll,
+        'Bulan Denda Baksos Lunas': recapItem?.baksosPaidMonthsText || '-',
         'Total Pembayaran Tunggakan (Rp)': totalTunggakanAll,
         'TOTAL KESELURUHAN KAS MASUK (Rp)': grandTotalAll,
         'Sisa Tunggakan Bulan Lalu (Rp)': remainingTotal,
         'Denda Baksos Belum Bayar (Rp)': baksosUnpaidTotal,
+        'Bulan Denda Baksos Belum Bayar': recapItem?.baksosUnpaidMonthsText || '-',
         'Status Kelunasan Keseluruhan': statusOverall,
       };
     });
@@ -532,10 +534,12 @@ export function exportFinancialReportToExcel({
       'Periode Lunas': 'Akumulasi Kas',
       'Total Iuran Rutin (Rp)': sumTotalIuranAll,
       'Total Denda Baksos (Rp)': sumTotalDendaAll,
+      'Bulan Denda Baksos Lunas': '-',
       'Total Pembayaran Tunggakan (Rp)': sumTotalTunggakanAll,
       'TOTAL KESELURUHAN KAS MASUK (Rp)': sumGrandTotalAll,
       'Sisa Tunggakan Bulan Lalu (Rp)': sumTotalRemainingArrears,
       'Denda Baksos Belum Bayar (Rp)': sumTotalUnpaidBaksos,
+      'Bulan Denda Baksos Belum Bayar': '-',
       'Status Kelunasan Keseluruhan': 'TOTAL PEMASUKAN SEMUA PERIODE',
     });
 
@@ -549,10 +553,12 @@ export function exportFinancialReportToExcel({
       'Periode Lunas': '-',
       'Total Iuran Rutin (Rp)': '-',
       'Total Denda Baksos (Rp)': '-',
+      'Bulan Denda Baksos Lunas': '-',
       'Total Pembayaran Tunggakan (Rp)': '-',
       'TOTAL KESELURUHAN KAS MASUK (Rp)': '-',
       'Sisa Tunggakan Bulan Lalu (Rp)': sumTotalRemainingArrears,
       'Denda Baksos Belum Bayar (Rp)': sumTotalUnpaidBaksos,
+      'Bulan Denda Baksos Belum Bayar': '-',
       'Status Kelunasan Keseluruhan': 'SISA TUNGGAKAN AKTIF',
     });
 
@@ -566,9 +572,12 @@ export function exportFinancialReportToExcel({
       'Periode Lunas': '-',
       'Total Iuran Rutin (Rp)': '-',
       'Total Denda Baksos (Rp)': sumTotalDendaAll,
+      'Bulan Denda Baksos Lunas': '-',
       'Total Pembayaran Tunggakan (Rp)': '-',
       'TOTAL KESELURUHAN KAS MASUK (Rp)': '-',
-      'Sisa Tunggakan Berjalan (Rp)': '-',
+      'Sisa Tunggakan Bulan Lalu (Rp)': '-',
+      'Denda Baksos Belum Bayar (Rp)': sumTotalUnpaidBaksos,
+      'Bulan Denda Baksos Belum Bayar': '-',
       'Status Kelunasan Keseluruhan': 'DETAIL BAKSOS & DENDA',
     });
 
@@ -610,13 +619,19 @@ export function exportFinancialReportToExcel({
         [`Tunggakan Iuran Bulan Ini (${config.duesCurrentMonth || 'Bulan Berjalan'}) (Rp)`]: duesArrears,
         'Jumlah Absen Baksos Belum Lunas': unpaidBaksos.length,
         'Tunggakan Denda Baksos (Rp)': baksosFineArrears,
-        'Keterangan Denda Baksos': house.previousBaksosArrearsNote || '-',
+        'Keterangan Denda Baksos': recapItem?.baksosUnpaidMonthsText
+          ? `Bulan: ${recapItem.baksosUnpaidMonthsText}`
+          : (house.previousBaksosArrearsNote || '-'),
         'Tunggakan Bulan/Tahun Lalu (Rp)': previousArrears,
         'Keterangan Tunggakan Lalu': previousArrearsNote || '-',
         'Rincian Kompilasi Tunggakan Lalu': [
           previousArrearsNote && previousArrearsNote !== '-' ? `Iuran: ${previousArrearsNote}` : '',
-          (house.previousBaksosArrears || 0) > 0 ? `Denda: Rp ${(house.previousBaksosArrears || 0).toLocaleString('id-ID')}` : '',
-          house.previousBaksosArrearsNote ? `Ket Denda: ${house.previousBaksosArrearsNote}` : ''
+          baksosFineArrears > 0 ? `Denda Baksos: Rp ${baksosFineArrears.toLocaleString('id-ID')}` : '',
+          recapItem?.baksosUnpaidMonthsText
+            ? `Bulan Denda: ${recapItem.baksosUnpaidMonthsText}`
+            : house.previousBaksosArrearsNote
+            ? `Ket Denda: ${house.previousBaksosArrearsNote}`
+            : '',
         ].filter(Boolean).join(' | ') || '-',
         'TOTAL TUNGGAKAN (Rp)': totalArrears,
         'Status Tagihan': totalArrears > 0 ? 'TERTUNGGAK' : 'LUNAS / BERSIH',

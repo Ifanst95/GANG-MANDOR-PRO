@@ -279,6 +279,9 @@ export const ResidentSelfCheckBar: React.FC<ResidentSelfCheckBarProps> = ({
                       </span>
                       <span className="block text-[11px] text-slate-700 font-medium mt-0.5 tabular-nums">
                         Denda belum bayar: {formatRupiah(summary.baksosDebt)}
+                        {summary.baksosDebt > 0 && summary.recapItem?.baksosUnpaidMonthsText
+                          ? ` (${summary.recapItem.baksosUnpaidMonthsText})`
+                          : ''}
                       </span>
                     </div>
                   </div>
