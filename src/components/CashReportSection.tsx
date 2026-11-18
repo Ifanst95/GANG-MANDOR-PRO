@@ -6640,33 +6640,33 @@ export const CashReportSection: React.FC<CashReportSectionProps> = ({
             </div>
 
             <div className="overflow-x-auto rounded-2xl border border-slate-300/90 shadow-sm bg-white">
-              <table className="w-full text-left text-xs border-collapse border border-slate-300 whitespace-nowrap">
+              <table className="w-full text-left text-xs border-collapse border border-slate-300 table-fixed">
                 <thead>
                   <tr className="bg-gradient-to-r from-slate-900 via-purple-950 to-indigo-950 text-white font-extrabold border-b border-slate-300">
-                    <th className="py-3 px-2 text-center w-12 border border-slate-300/70 text-white">No</th>
-                    <th className="py-3 px-3 text-center border border-slate-300/70 text-white">No Blok</th>
+                    <th className="py-3 px-2 text-center w-14 min-w-[56px] max-w-[56px] border border-slate-300/70 text-white">No</th>
+                    <th className="py-3 px-3 text-center w-32 min-w-[128px] max-w-[128px] border border-slate-300/70 text-white">No Blok</th>
 
                     {/* Render Kolom untuk Setiap Periode */}
                     {sortedPeriods.map((periodName) => (
                       <th
                         key={periodName}
-                        className="py-3 px-3 text-center border border-slate-300/70 text-purple-200 font-bold bg-purple-900/40"
+                        className="py-3 px-2 text-center border border-slate-300/70 text-purple-200 font-bold bg-purple-900/40 w-40 min-w-[160px] max-w-[160px]"
                       >
-                        <div className="text-xs">{periodName}</div>
+                        <div className="text-xs whitespace-normal break-words leading-tight">{periodName}</div>
                         <div className="text-[10px] font-normal text-purple-300/80 tracking-normal font-sans">(KK &amp; Kas)</div>
                       </th>
                     ))}
 
-                    <th className="py-3 px-3 text-right border border-slate-300/70 text-amber-200">
-                      <div>Sisa Tunggakan</div>
-                      <div className="text-[10px] font-normal text-amber-300/80 tracking-normal font-sans">(Bulan Sebelumnya)</div>
+                    <th className="py-3 px-3 text-right border border-slate-300/70 text-amber-200 w-40 min-w-[160px] max-w-[160px]">
+                      <div className="whitespace-normal break-words leading-tight">Sisa Tunggakan</div>
+                      <div className="text-[10px] font-normal text-amber-300/80 tracking-normal font-sans whitespace-normal break-words">(Bulan Sebelumnya)</div>
                     </th>
-                    <th className="py-3 px-3 text-center border border-slate-300/70 text-teal-200">
-                      <div>Denda Baksos</div>
-                      <div className="text-[10px] font-normal text-teal-300/80 tracking-normal font-sans">(Khusus Baksos)</div>
+                    <th className="py-3 px-3 text-center border border-slate-300/70 text-teal-200 w-40 min-w-[160px] max-w-[160px]">
+                      <div className="whitespace-normal break-words leading-tight">Denda Baksos</div>
+                      <div className="text-[10px] font-normal text-teal-300/80 tracking-normal font-sans whitespace-normal break-words">(Khusus Baksos)</div>
                     </th>
-                    <th className="py-3 px-3 text-center border border-slate-300/70 text-white w-28">
-                      Aksi &amp; Detail
+                    <th className="py-3 px-3 text-center border border-slate-300/70 text-white w-36 min-w-[144px] max-w-[144px]">
+                      <div className="whitespace-normal break-words leading-tight">Aksi &amp; Detail</div>
                     </th>
                   </tr>
                 </thead>
@@ -6710,7 +6710,7 @@ export const CashReportSection: React.FC<CashReportSectionProps> = ({
                         >
                           {/* 1. No */}
                           <td
-                            className={`py-2.5 px-2 text-center font-mono border ${
+                            className={`py-2.5 px-2 text-center font-mono border w-14 min-w-[56px] max-w-[56px] ${
                               isRumahKosongHitam ? 'text-neutral-400 bg-neutral-950 border-neutral-800' : 'text-slate-600 border-slate-300'
                             }`}
                           >
@@ -6718,10 +6718,10 @@ export const CashReportSection: React.FC<CashReportSectionProps> = ({
                           </td>
 
                           {/* 2. No Blok (Otomatis dari Rekap Iuran Per KK, tidak diedit di sini) */}
-                          <td className={`py-2.5 px-3 text-center border ${isRumahKosongHitam ? 'bg-neutral-950 border-neutral-800' : 'border-slate-300'}`}>
+                          <td className={`py-2.5 px-3 text-center border w-32 min-w-[128px] max-w-[128px] ${isRumahKosongHitam ? 'bg-neutral-950 border-neutral-800' : 'border-slate-300'}`}>
                             <div className="flex items-center justify-center">
                               <span
-                                className={`font-mono text-xs font-bold px-2.5 py-0.5 rounded-lg border shadow-2xs ${
+                                className={`font-mono text-xs font-bold px-2.5 py-0.5 rounded-lg border shadow-2xs whitespace-normal break-words ${
                                   isRumahKosongHitam
                                     ? 'bg-neutral-900 text-white border-neutral-700'
                                     : overallStatus === 'Bayar Lebih'
@@ -6745,7 +6745,7 @@ export const CashReportSection: React.FC<CashReportSectionProps> = ({
                             return (
                               <td
                                 key={pDet.periodLabel}
-                                className={`py-2.5 px-2.5 text-center font-mono text-xs align-middle transition-colors ${
+                                className={`py-2.5 px-2 text-center font-mono text-xs align-middle transition-colors w-40 min-w-[160px] max-w-[160px] ${
                                   isCellKosong
                                     ? 'bg-neutral-950 text-neutral-200 border border-neutral-800 shadow-inner'
                                     : pDet.isAdvanceSubsequent
@@ -6759,7 +6759,7 @@ export const CashReportSection: React.FC<CashReportSectionProps> = ({
                               >
                                 {/* Nama Kepala Keluarga di Periode Bulan Ini */}
                                 <div
-                                  className={`text-[11px] font-sans font-bold leading-tight mb-1 truncate max-w-[130px] mx-auto ${
+                                  className={`text-[11px] font-sans font-bold leading-tight mb-1 whitespace-normal break-words mx-auto ${
                                     isCellKosong
                                       ? 'text-neutral-300'
                                       : pDet.isAdvanceSubsequent || pDet.isLunasThisPeriod || pDet.tunggakanPaid > 0
@@ -6769,7 +6769,7 @@ export const CashReportSection: React.FC<CashReportSectionProps> = ({
                                   title={`Kepala Keluarga (${pDet.periodLabel}): ${isCellKosong ? 'Rumah Kosong' : pDet.periodHeadName}`}
                                 >
                                   {isCellKosong ? (
-                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-neutral-900 text-neutral-300 border border-neutral-700 text-[10px] font-bold shadow-2xs">
+                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-neutral-900 text-neutral-300 border border-neutral-700 text-[10px] font-bold shadow-2xs whitespace-normal break-words">
                                       Rumah Kosong
                                     </span>
                                   ) : (
@@ -7067,7 +7067,7 @@ export const CashReportSection: React.FC<CashReportSectionProps> = ({
 
                           {/* Sisa Tunggakan (Iuran Bulan-Bulan Sebelumnya yang Belum Bayar) */}
                           <td
-                            className={`py-2.5 px-3 text-right font-mono tabular-nums border font-bold ${
+                            className={`py-2.5 px-3 text-right font-mono tabular-nums border font-bold w-40 min-w-[160px] max-w-[160px] ${
                               isRumahKosongHitam
                                 ? 'bg-neutral-950 text-neutral-300 border-neutral-800'
                                 : 'border-slate-300'
@@ -7084,7 +7084,7 @@ export const CashReportSection: React.FC<CashReportSectionProps> = ({
                                 </span>
                                 {row.previousArrearsNote ? (
                                   <span
-                                    className="block text-[9.5px] text-amber-800 font-bold whitespace-normal break-words max-w-[240px] ml-auto leading-tight mt-0.5"
+                                    className="block text-[9.5px] text-amber-800 font-bold whitespace-normal break-words max-w-[150px] ml-auto leading-tight mt-0.5"
                                     title={`Tunggakan: ${row.previousArrearsNote}`}
                                   >
                                     ({row.previousArrearsNote})
@@ -7104,7 +7104,7 @@ export const CashReportSection: React.FC<CashReportSectionProps> = ({
 
                           {/* Denda Baksos (Otomatis Masuk Rekap Tunggakan jika Belum Bayar) */}
                           <td
-                            className={`py-2.5 px-3 text-center font-mono text-xs border ${
+                            className={`py-2.5 px-3 text-center font-mono text-xs border w-36 min-w-[140px] max-w-[140px] ${
                               isRumahKosongHitam
                                 ? 'bg-neutral-950 text-neutral-300 border-neutral-800'
                                 : 'border-slate-300'
@@ -7124,7 +7124,7 @@ export const CashReportSection: React.FC<CashReportSectionProps> = ({
                                 </span>
                                 {row.baksosUnpaidMonthsText && (
                                   <span
-                                    className="block text-[9.5px] font-sans text-rose-800 font-bold whitespace-normal break-words max-w-[180px] leading-tight text-center"
+                                    className="block text-[9.5px] font-sans text-rose-800 font-bold whitespace-normal break-words max-w-[130px] leading-tight text-center"
                                     title={`Denda Baksos Belum Bayar Bulan: ${row.baksosUnpaidMonthsText}`}
                                   >
                                     (Bulan: {row.baksosUnpaidMonthsText})
@@ -7132,7 +7132,7 @@ export const CashReportSection: React.FC<CashReportSectionProps> = ({
                                 )}
                                 {row.totalDendaAllPeriods > 0 && row.baksosPaidMonthsText && (
                                   <span
-                                    className="block text-[9px] font-sans text-teal-800 font-semibold whitespace-normal break-words max-w-[180px] leading-tight text-center mt-0.5"
+                                    className="block text-[9px] font-sans text-teal-800 font-semibold whitespace-normal break-words max-w-[130px] leading-tight text-center mt-0.5"
                                     title={`Denda Baksos Sudah Lunas: +${formatRupiah(row.totalDendaAllPeriods)} (${row.baksosPaidMonthsText})`}
                                   >
                                     ✓ Lunas: +{formatRupiah(row.totalDendaAllPeriods)} ({row.baksosPaidMonthsText})
@@ -7149,7 +7149,7 @@ export const CashReportSection: React.FC<CashReportSectionProps> = ({
                                 </span>
                                 {row.baksosPaidMonthsText && (
                                   <span
-                                    className="block text-[9.5px] font-sans text-teal-900 font-semibold whitespace-normal break-words max-w-[180px] leading-tight text-center"
+                                    className="block text-[9.5px] font-sans text-teal-900 font-semibold whitespace-normal break-words max-w-[130px] leading-tight text-center"
                                     title={`Denda Baksos Lunas Bulan: ${row.baksosPaidMonthsText}`}
                                   >
                                     (Bulan: {row.baksosPaidMonthsText})
@@ -7162,7 +7162,7 @@ export const CashReportSection: React.FC<CashReportSectionProps> = ({
                                   ✓ Denda Lunas
                                 </span>
                                 {row.baksosPaidMonthsText && (
-                                  <span className="block text-[9.5px] font-sans text-teal-900 font-semibold whitespace-normal break-words max-w-[180px] leading-tight text-center">
+                                  <span className="block text-[9.5px] font-sans text-teal-900 font-semibold whitespace-normal break-words max-w-[130px] leading-tight text-center">
                                     (Bulan: {row.baksosPaidMonthsText})
                                   </span>
                                 )}
@@ -7176,7 +7176,7 @@ export const CashReportSection: React.FC<CashReportSectionProps> = ({
 
                           {/* Aksi & Detail */}
                           <td
-                            className={`py-2.5 px-3 text-center border ${
+                            className={`py-2.5 px-3 text-center border w-32 min-w-[128px] max-w-[128px] ${
                               isRumahKosongHitam
                                 ? 'bg-neutral-950 border-neutral-800'
                                 : 'border-slate-300'
@@ -7232,7 +7232,7 @@ export const CashReportSection: React.FC<CashReportSectionProps> = ({
                     {sortedPeriods.map((periodName) => {
                       const pSum = periodSummaries[periodName];
                       return (
-                        <td key={periodName} className="py-2.5 px-2 text-center border border-slate-300 font-mono text-xs">
+                        <td key={periodName} className="py-2.5 px-2 text-center border border-slate-300 font-mono text-xs w-36 min-w-[140px] max-w-[140px]">
                           <div className="font-black text-emerald-950">
                             +{formatRupiah(pSum?.sumPemasukan || 0)}
                           </div>
@@ -7242,12 +7242,12 @@ export const CashReportSection: React.FC<CashReportSectionProps> = ({
                         </td>
                       );
                     })}
-                    <td className="py-2.5 px-3 text-right border border-slate-300 font-mono font-black text-rose-700 text-xs">
+                    <td className="py-2.5 px-3 text-right border border-slate-300 font-mono font-black text-rose-700 text-xs w-40 min-w-[160px] max-w-[160px]">
                       {overallTotals.sumRemainingArrears > 0
                         ? formatRupiah(overallTotals.sumRemainingArrears)
                         : 'Rp 0'}
                     </td>
-                    <td className="py-2.5 px-3 text-center border border-slate-300 font-mono text-xs">
+                    <td className="py-2.5 px-3 text-center border border-slate-300 font-mono text-xs w-36 min-w-[140px] max-w-[140px]">
                       {overallTotals.sumBaksosFineArrears > 0 ? (
                         <span className="text-rose-700 font-black">
                           {formatRupiah(overallTotals.sumBaksosFineArrears)}
@@ -7256,7 +7256,7 @@ export const CashReportSection: React.FC<CashReportSectionProps> = ({
                         <span className="text-emerald-700 font-bold">Rp 0</span>
                       )}
                     </td>
-                    <td className="py-2.5 px-2 text-center border border-slate-300 text-slate-400">
+                    <td className="py-2.5 px-2 text-center border border-slate-300 text-slate-400 w-32 min-w-[128px] max-w-[128px]">
                       -
                     </td>
                   </tr>
