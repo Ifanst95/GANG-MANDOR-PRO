@@ -6650,18 +6650,18 @@ export const CashReportSection: React.FC<CashReportSectionProps> = ({
                     {sortedPeriods.map((periodName) => (
                       <th
                         key={periodName}
-                        className="py-3 px-2 text-center border border-slate-300/70 text-purple-200 font-bold bg-purple-900/40 w-40 min-w-[160px] max-w-[160px]"
+                        className="py-3 px-2 text-center border border-slate-300/70 text-purple-200 font-bold bg-purple-900/40 w-48 min-w-[192px] max-w-[192px]"
                       >
                         <div className="text-xs whitespace-normal break-words leading-tight">{periodName}</div>
                         <div className="text-[10px] font-normal text-purple-300/80 tracking-normal font-sans">(KK &amp; Kas)</div>
                       </th>
                     ))}
 
-                    <th className="py-3 px-3 text-right border border-slate-300/70 text-amber-200 w-40 min-w-[160px] max-w-[160px]">
+                    <th className="py-3 px-3 text-right border border-slate-300/70 text-amber-200 w-48 min-w-[192px] max-w-[192px]">
                       <div className="whitespace-normal break-words leading-tight">Sisa Tunggakan</div>
                       <div className="text-[10px] font-normal text-amber-300/80 tracking-normal font-sans whitespace-normal break-words">(Bulan Sebelumnya)</div>
                     </th>
-                    <th className="py-3 px-3 text-center border border-slate-300/70 text-teal-200 w-40 min-w-[160px] max-w-[160px]">
+                    <th className="py-3 px-3 text-center border border-slate-300/70 text-teal-200 w-48 min-w-[192px] max-w-[192px]">
                       <div className="whitespace-normal break-words leading-tight">Denda Baksos</div>
                       <div className="text-[10px] font-normal text-teal-300/80 tracking-normal font-sans whitespace-normal break-words">(Khusus Baksos)</div>
                     </th>
@@ -6745,7 +6745,7 @@ export const CashReportSection: React.FC<CashReportSectionProps> = ({
                             return (
                               <td
                                 key={pDet.periodLabel}
-                                className={`py-2.5 px-2 text-center font-mono text-xs align-middle transition-colors w-40 min-w-[160px] max-w-[160px] ${
+                                className={`py-2.5 px-2 text-center font-mono text-xs align-middle transition-colors w-48 min-w-[192px] max-w-[192px] ${
                                   isCellKosong
                                     ? 'bg-neutral-950 text-neutral-200 border border-neutral-800 shadow-inner'
                                     : pDet.isAdvanceSubsequent
@@ -6799,10 +6799,10 @@ export const CashReportSection: React.FC<CashReportSectionProps> = ({
                                   )
                                 ) : pDet.isAdvanceSubsequent ? (
                                   <div className="flex flex-col items-center gap-0.5">
-                                    <span className="px-2 py-0.5 rounded-md bg-sky-100 text-sky-950 text-[10px] font-extrabold border border-sky-300 shadow-2xs whitespace-nowrap">
+                                    <span className="px-2 py-0.5 rounded-md bg-sky-100 text-sky-950 text-[10px] font-extrabold border border-sky-300 shadow-2xs whitespace-normal break-words text-center">
                                       ✓ {pDet.statusBadge}
                                     </span>
-                                    <span className="text-[8.5px] text-sky-800 font-semibold whitespace-nowrap">
+                                    <span className="text-[8.5px] text-sky-800 font-semibold whitespace-normal break-words text-center">
                                       (Bayar &gt;1 Bulan)
                                     </span>
                                     {/* Pembayaran Tunggakan Bulan Lalu jika ada */}
@@ -6909,10 +6909,10 @@ export const CashReportSection: React.FC<CashReportSectionProps> = ({
                                   </div>
                                 ) : pDet.isArrearSettledLater && pDet.settlementMonth ? (
                                   <div className="flex flex-col items-center gap-0.5">
-                                    <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-900 text-[10px] font-extrabold border border-emerald-300 shadow-2xs whitespace-nowrap">
+                                    <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-950 text-[10px] font-extrabold border border-emerald-300 shadow-2xs whitespace-normal break-words text-center">
                                       ✓ Lunas Bulan {pDet.settlementMonth}
                                     </span>
-                                    <span className="text-[9px] text-emerald-700 font-semibold whitespace-nowrap">
+                                    <span className="text-[9px] text-emerald-800 font-semibold whitespace-normal break-words text-center">
                                       (Pelunasan Tunggakan)
                                     </span>
                                     {/* Denda Baksos */}
@@ -6953,7 +6953,7 @@ export const CashReportSection: React.FC<CashReportSectionProps> = ({
                                   </div>
                                 ) : (pDet.iuranPaid > 0 || pDet.tunggakanPaid > 0 || pDet.isLunasThisPeriod) ? (
                                   <div className="flex flex-col items-center gap-0.5">
-                                    <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-900 text-[10px] font-extrabold border border-emerald-300 shadow-2xs whitespace-nowrap">
+                                    <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-950 text-[10px] font-extrabold border border-emerald-300 shadow-2xs whitespace-normal break-words text-center">
                                       ✓ {pDet.tunggakanPaid > 0 && pDet.iuranPaid === 0 ? 'Lunas (Bayar Tunggakan)' : 'Lunas'}
                                     </span>
                                     {pDet.iuranPaid > 0 && (
@@ -7067,7 +7067,7 @@ export const CashReportSection: React.FC<CashReportSectionProps> = ({
 
                           {/* Sisa Tunggakan (Iuran Bulan-Bulan Sebelumnya yang Belum Bayar) */}
                           <td
-                            className={`py-2.5 px-3 text-right font-mono tabular-nums border font-bold w-40 min-w-[160px] max-w-[160px] ${
+                            className={`py-2.5 px-3 text-right font-mono tabular-nums border font-bold w-48 min-w-[192px] max-w-[192px] ${
                               isRumahKosongHitam
                                 ? 'bg-neutral-950 text-neutral-300 border-neutral-800'
                                 : 'border-slate-300'
@@ -7104,7 +7104,7 @@ export const CashReportSection: React.FC<CashReportSectionProps> = ({
 
                           {/* Denda Baksos (Otomatis Masuk Rekap Tunggakan jika Belum Bayar) */}
                           <td
-                            className={`py-2.5 px-3 text-center font-mono text-xs border w-36 min-w-[140px] max-w-[140px] ${
+                            className={`py-2.5 px-3 text-center font-mono text-xs border w-48 min-w-[192px] max-w-[192px] ${
                               isRumahKosongHitam
                                 ? 'bg-neutral-950 text-neutral-300 border-neutral-800'
                                 : 'border-slate-300'
