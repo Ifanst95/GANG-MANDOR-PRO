@@ -150,9 +150,10 @@ export const ArrearsSection: React.FC<ArrearsSectionProps> = ({
       const previousBaksosArrearsNote = row.previousBaksosArrearsNote || '';
       const totalArrears = duesArrears + baksosFineArrears + previousArrears;
 
-      // Keterangan tunggakan lalu langsung bersumber dari isian Tabel Rekap Pembayaran Iuran Per KK
+      // Keterangan tunggakan lalu hanya tampil jika masih ada tunggakan dan memprioritaskan hasil perhitungan akurat
       const rawPrevNote = (row.house.previousArrearsNote || '').trim();
-      const previousArrearsNote = rawPrevNote || row.previousArrearsNote || '';
+      const previousArrearsNote =
+        previousArrears > 0 ? row.previousArrearsNote || rawPrevNote : '';
 
       return {
         house: row.house,

@@ -3104,7 +3104,7 @@ export const CashReportSection: React.FC<CashReportSectionProps> = ({
           : {} ),
         customBaksosFineAmount:
           houseDuesBaksosStatusInput === 'Belum Bayar'
-            ? (hasEditedBaksosUnpaidMonths || houseDuesBaksosUnpaidMonths.length > 1
+            ? (hasEditedBaksosUnpaidMonths || houseDuesBaksosUnpaidMonths.length > 1 || dendaAmountNum <= 0
                 ? currentSinglePeriodFine
                 : dendaAmountNum)
             : houseDuesBaksosStatusInput === 'Lunas' || houseDuesBaksosStatusInput === 'Bebas' || houseDuesBaksosStatusInput === 'Hadir' || houseDuesBaksosStatusInput === 'Tidak Wajib'
@@ -6764,43 +6764,67 @@ export const CashReportSection: React.FC<CashReportSectionProps> = ({
                                       </div>
                                     )}
                                     {/* Denda Baksos */}
-                                    {pDet.dendaPaid > 0 ? (
-                                      <div className="w-full mt-1 px-1.5 py-0.5 rounded-md bg-teal-100/90 text-teal-950 border border-teal-300 flex flex-col items-center text-[10px] shadow-2xs">
-                                        <span className="font-mono font-black text-teal-800 whitespace-normal break-words text-center">
-                                          +Denda {formatRupiah(pDet.dendaPaid)}
-                                        </span>
-                                        <span className="text-[8.5px] font-extrabold text-teal-800 text-center leading-tight whitespace-normal break-words">
-                                          ✓ Denda Baksos Lunas
-                                        </span>
-                                        <span className="text-[8px] font-bold text-teal-900 text-center leading-tight whitespace-normal break-words">
-                                          (Bulan: {pDet.dendaDetailNote || pDet.periodLabel})
-                                        </span>
-                                      </div>
-                                    ) : pDet.isDendaSettledLater ? (
-                                      <div className="w-full mt-1 px-1.5 py-0.5 rounded-md bg-teal-100/90 text-teal-950 border border-teal-300 flex flex-col items-center text-[9.5px] shadow-2xs">
-                                        <span className="font-extrabold text-teal-900 text-center leading-tight">
-                                          ✓ Denda Lunas di {pDet.dendaSettlementMonth || 'Bulan Berikutnya'}
-                                        </span>
-                                        <span className="text-[8px] font-semibold text-teal-700">
-                                          (Pelunasan Denda)
-                                        </span>
-                                      </div>
-                                    ) : pDet.baksosFineUnpaid && pDet.baksosFineUnpaid > 0 ? (
-                                      <div className="w-full mt-1 px-1 py-0.5 rounded-md bg-rose-100 text-rose-900 border border-rose-300 flex flex-col items-center text-[8.5px] shadow-2xs font-bold">
-                                        <span>Absen Baksos</span>
-                                        <span className="text-rose-800 font-extrabold">
-                                          Denda {formatRupiah(pDet.baksosFineUnpaid)} Belum Bayar
-                                        </span>
-                                      </div>
-                                    ) : pDet.baksosAttendance === 'Hadir' ? (
-                                      <span className="inline-block mt-0.5 px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-900 border border-emerald-300 text-[8.5px] font-bold text-center">
-                                        ✓ Hadir Baksos
-                                      </span>
-                                    ) : pDet.baksosAttendance === 'Tidak Wajib' ? (
-                                      <span className="inline-block mt-0.5 px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 border border-slate-300 text-[8.5px] font-semibold text-center">
-                                        Tidak Wajib Baksos
-                                      </span>
-                                    ) : null}
+                                    {(() => {
+                                      const isPastBaksosPayment =
+                                        pDet.dendaPaid > 0 &&
+                                        (pDet.isDendaSettledLater ||
+                                          (pDet.dendaPaidMonths &&
+                                            pDet.dendaPaidMonths.length > 0 &&
+                                            pDet.dendaPaidMonths.every((m) => {
+                                              const mk = parseIndonesianMonthYearToKey(m);
+                                              return Boolean(mk && pDet.pKey && mk < pDet.pKey);
+                                            })));
+                                      const hasDendaPaid = pDet.dendaPaid > 0;
+                                      const hasLaterSettle = Boolean(pDet.isDendaSettledLater);
+                                      const hasUnpaidFine = !hasLaterSettle && Boolean(pDet.baksosFineUnpaid && pDet.baksosFineUnpaid > 0);
+                                      return (
+                                        <>
+                                          {hasDendaPaid && (
+                                            <div className="w-full mt-1 px-1.5 py-0.5 rounded-md bg-teal-100/90 text-teal-950 border border-teal-300 flex flex-col items-center text-[10px] shadow-2xs">
+                                              <span className="font-mono font-black text-teal-800 whitespace-normal break-words text-center">
+                                                +Denda {formatRupiah(pDet.dendaPaid)}
+                                              </span>
+                                              <span className="text-[8.5px] font-extrabold text-teal-800 text-center leading-tight whitespace-normal break-words">
+                                                {isPastBaksosPayment
+                                                  ? `Pelunasan Tunggakan Baksos`
+                                                  : `✓ Denda Baksos Lunas`}
+                                              </span>
+                                              <span className="text-[8px] font-bold text-teal-900 text-center leading-tight whitespace-normal break-words">
+                                                (Bulan: {pDet.dendaDetailNote || pDet.periodLabel})
+                                              </span>
+                                            </div>
+                                          )}
+                                          {hasLaterSettle && (
+                                            <div className="w-full mt-1 px-1.5 py-0.5 rounded-md bg-teal-100/90 text-teal-950 border border-teal-300 flex flex-col items-center text-[9.5px] shadow-2xs">
+                                              <span className="font-extrabold text-teal-900 text-center leading-tight whitespace-normal break-words">
+                                                ✓ Lunas di Bulan {pDet.dendaSettlementMonth || 'Berikutnya'}
+                                              </span>
+                                              <span className="text-[8px] font-semibold text-teal-700 text-center leading-tight whitespace-normal break-words">
+                                                (Denda Baksos {pDet.periodLabel})
+                                              </span>
+                                            </div>
+                                          )}
+                                          {hasUnpaidFine && (
+                                            <div className="w-full mt-1 px-1 py-0.5 rounded-md bg-rose-100 text-rose-900 border border-rose-300 flex flex-col items-center text-[8.5px] shadow-2xs font-bold">
+                                              <span className="whitespace-normal break-words text-center">Absen Baksos</span>
+                                              <span className="text-rose-800 font-extrabold whitespace-normal break-words text-center">
+                                                Denda {formatRupiah(pDet.baksosFineUnpaid || 0)} Belum Bayar
+                                              </span>
+                                            </div>
+                                          )}
+                                          {!hasDendaPaid && !hasLaterSettle && !hasUnpaidFine && pDet.baksosAttendance === 'Hadir' && (
+                                            <span className="inline-block mt-0.5 px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-900 border border-emerald-300 text-[8.5px] font-bold text-center whitespace-normal break-words">
+                                              ✓ Hadir Baksos
+                                            </span>
+                                          )}
+                                          {!hasDendaPaid && !hasLaterSettle && !hasUnpaidFine && pDet.baksosAttendance === 'Tidak Wajib' && (
+                                            <span className="inline-block mt-0.5 px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 border border-slate-300 text-[8.5px] font-semibold text-center whitespace-normal break-words">
+                                              Tidak Wajib Baksos
+                                            </span>
+                                          )}
+                                        </>
+                                      );
+                                    })()}
                                   </div>
                                 ) : (pDet.statusInfo?.status === 'Bayar Lebih' || pDet.statusBadge?.includes('Bayar Lebih')) ? (
                                   <div className="flex flex-col items-center">
@@ -6822,43 +6846,67 @@ export const CashReportSection: React.FC<CashReportSectionProps> = ({
                                       </div>
                                     )}
                                     {/* Denda Baksos */}
-                                    {pDet.dendaPaid > 0 ? (
-                                      <div className="w-full mt-1 px-1.5 py-0.5 rounded-md bg-teal-100/90 text-teal-950 border border-teal-300 flex flex-col items-center text-[10px] shadow-2xs">
-                                        <span className="font-mono font-black text-teal-800 whitespace-normal break-words text-center">
-                                          +Denda {formatRupiah(pDet.dendaPaid)}
-                                        </span>
-                                        <span className="text-[8.5px] font-extrabold text-teal-800 text-center leading-tight whitespace-normal break-words">
-                                          ✓ Denda Baksos Lunas
-                                        </span>
-                                        <span className="text-[8px] font-bold text-teal-900 text-center leading-tight whitespace-normal break-words">
-                                          (Bulan: {pDet.dendaDetailNote || pDet.periodLabel})
-                                        </span>
-                                      </div>
-                                    ) : pDet.isDendaSettledLater ? (
-                                      <div className="w-full mt-1 px-1.5 py-0.5 rounded-md bg-teal-100/90 text-teal-950 border border-teal-300 flex flex-col items-center text-[9.5px] shadow-2xs">
-                                        <span className="font-extrabold text-teal-900 text-center leading-tight">
-                                          ✓ Denda Lunas di {pDet.dendaSettlementMonth || 'Bulan Berikutnya'}
-                                        </span>
-                                        <span className="text-[8px] font-semibold text-teal-700">
-                                          (Pelunasan Denda)
-                                        </span>
-                                      </div>
-                                    ) : pDet.baksosFineUnpaid && pDet.baksosFineUnpaid > 0 ? (
-                                      <div className="w-full mt-1 px-1 py-0.5 rounded-md bg-rose-100 text-rose-900 border border-rose-300 flex flex-col items-center text-[8.5px] shadow-2xs font-bold">
-                                        <span>Absen Baksos</span>
-                                        <span className="text-rose-800 font-extrabold">
-                                          Denda {formatRupiah(pDet.baksosFineUnpaid)} Belum Bayar
-                                        </span>
-                                      </div>
-                                    ) : pDet.baksosAttendance === 'Hadir' ? (
-                                      <span className="inline-block mt-0.5 px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-900 border border-emerald-300 text-[8.5px] font-bold text-center">
-                                        ✓ Hadir Baksos
-                                      </span>
-                                    ) : pDet.baksosAttendance === 'Tidak Wajib' ? (
-                                      <span className="inline-block mt-0.5 px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 border border-slate-300 text-[8.5px] font-semibold text-center">
-                                        Tidak Wajib Baksos
-                                      </span>
-                                    ) : null}
+                                    {(() => {
+                                      const isPastBaksosPayment =
+                                        pDet.dendaPaid > 0 &&
+                                        (pDet.isDendaSettledLater ||
+                                          (pDet.dendaPaidMonths &&
+                                            pDet.dendaPaidMonths.length > 0 &&
+                                            pDet.dendaPaidMonths.every((m) => {
+                                              const mk = parseIndonesianMonthYearToKey(m);
+                                              return Boolean(mk && pDet.pKey && mk < pDet.pKey);
+                                            })));
+                                      const hasDendaPaid = pDet.dendaPaid > 0;
+                                      const hasLaterSettle = Boolean(pDet.isDendaSettledLater);
+                                      const hasUnpaidFine = !hasLaterSettle && Boolean(pDet.baksosFineUnpaid && pDet.baksosFineUnpaid > 0);
+                                      return (
+                                        <>
+                                          {hasDendaPaid && (
+                                            <div className="w-full mt-1 px-1.5 py-0.5 rounded-md bg-teal-100/90 text-teal-950 border border-teal-300 flex flex-col items-center text-[10px] shadow-2xs">
+                                              <span className="font-mono font-black text-teal-800 whitespace-normal break-words text-center">
+                                                +Denda {formatRupiah(pDet.dendaPaid)}
+                                              </span>
+                                              <span className="text-[8.5px] font-extrabold text-teal-800 text-center leading-tight whitespace-normal break-words">
+                                                {isPastBaksosPayment
+                                                  ? `Pelunasan Tunggakan Baksos`
+                                                  : `✓ Denda Baksos Lunas`}
+                                              </span>
+                                              <span className="text-[8px] font-bold text-teal-900 text-center leading-tight whitespace-normal break-words">
+                                                (Bulan: {pDet.dendaDetailNote || pDet.periodLabel})
+                                              </span>
+                                            </div>
+                                          )}
+                                          {hasLaterSettle && (
+                                            <div className="w-full mt-1 px-1.5 py-0.5 rounded-md bg-teal-100/90 text-teal-950 border border-teal-300 flex flex-col items-center text-[9.5px] shadow-2xs">
+                                              <span className="font-extrabold text-teal-900 text-center leading-tight whitespace-normal break-words">
+                                                ✓ Lunas di Bulan {pDet.dendaSettlementMonth || 'Berikutnya'}
+                                              </span>
+                                              <span className="text-[8px] font-semibold text-teal-700 text-center leading-tight whitespace-normal break-words">
+                                                (Denda Baksos {pDet.periodLabel})
+                                              </span>
+                                            </div>
+                                          )}
+                                          {hasUnpaidFine && (
+                                            <div className="w-full mt-1 px-1 py-0.5 rounded-md bg-rose-100 text-rose-900 border border-rose-300 flex flex-col items-center text-[8.5px] shadow-2xs font-bold">
+                                              <span className="whitespace-normal break-words text-center">Absen Baksos</span>
+                                              <span className="text-rose-800 font-extrabold whitespace-normal break-words text-center">
+                                                Denda {formatRupiah(pDet.baksosFineUnpaid || 0)} Belum Bayar
+                                              </span>
+                                            </div>
+                                          )}
+                                          {!hasDendaPaid && !hasLaterSettle && !hasUnpaidFine && pDet.baksosAttendance === 'Hadir' && (
+                                            <span className="inline-block mt-0.5 px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-900 border border-emerald-300 text-[8.5px] font-bold text-center whitespace-normal break-words">
+                                              ✓ Hadir Baksos
+                                            </span>
+                                          )}
+                                          {!hasDendaPaid && !hasLaterSettle && !hasUnpaidFine && pDet.baksosAttendance === 'Tidak Wajib' && (
+                                            <span className="inline-block mt-0.5 px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 border border-slate-300 text-[8.5px] font-semibold text-center whitespace-normal break-words">
+                                              Tidak Wajib Baksos
+                                            </span>
+                                          )}
+                                        </>
+                                      );
+                                    })()}
                                   </div>
                                 ) : pDet.isArrearSettledLater && pDet.settlementMonth ? (
                                   <div className="flex flex-col items-center gap-0.5">
@@ -6869,43 +6917,67 @@ export const CashReportSection: React.FC<CashReportSectionProps> = ({
                                       (Pelunasan Tunggakan)
                                     </span>
                                     {/* Denda Baksos */}
-                                    {pDet.dendaPaid > 0 ? (
-                                      <div className="w-full mt-1 px-1.5 py-0.5 rounded-md bg-teal-100/90 text-teal-950 border border-teal-300 flex flex-col items-center text-[10px] shadow-2xs">
-                                        <span className="font-mono font-black text-teal-800 whitespace-normal break-words text-center">
-                                          +Denda {formatRupiah(pDet.dendaPaid)}
-                                        </span>
-                                        <span className="text-[8.5px] font-extrabold text-teal-800 text-center leading-tight whitespace-normal break-words">
-                                          ✓ Denda Baksos Lunas
-                                        </span>
-                                        <span className="text-[8px] font-bold text-teal-900 text-center leading-tight whitespace-normal break-words">
-                                          (Bulan: {pDet.dendaDetailNote || pDet.periodLabel})
-                                        </span>
-                                      </div>
-                                    ) : pDet.isDendaSettledLater ? (
-                                      <div className="w-full mt-1 px-1.5 py-0.5 rounded-md bg-teal-100/90 text-teal-950 border border-teal-300 flex flex-col items-center text-[9.5px] shadow-2xs">
-                                        <span className="font-extrabold text-teal-900 text-center leading-tight">
-                                          ✓ Denda Lunas di {pDet.dendaSettlementMonth || 'Bulan Berikutnya'}
-                                        </span>
-                                        <span className="text-[8px] font-semibold text-teal-700">
-                                          (Pelunasan Denda)
-                                        </span>
-                                      </div>
-                                    ) : pDet.baksosFineUnpaid && pDet.baksosFineUnpaid > 0 ? (
-                                      <div className="w-full mt-1 px-1 py-0.5 rounded-md bg-rose-100 text-rose-900 border border-rose-300 flex flex-col items-center text-[8.5px] shadow-2xs font-bold">
-                                        <span>Absen Baksos</span>
-                                        <span className="text-rose-800 font-extrabold">
-                                          Denda {formatRupiah(pDet.baksosFineUnpaid)} Belum Bayar
-                                        </span>
-                                      </div>
-                                    ) : pDet.baksosAttendance === 'Hadir' ? (
-                                      <span className="inline-block mt-0.5 px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-900 border border-emerald-300 text-[8.5px] font-bold text-center">
-                                        ✓ Hadir Baksos
-                                      </span>
-                                    ) : pDet.baksosAttendance === 'Tidak Wajib' ? (
-                                      <span className="inline-block mt-0.5 px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 border border-slate-300 text-[8.5px] font-semibold text-center">
-                                        Tidak Wajib Baksos
-                                      </span>
-                                    ) : null}
+                                    {(() => {
+                                      const isPastBaksosPayment =
+                                        pDet.dendaPaid > 0 &&
+                                        (pDet.isDendaSettledLater ||
+                                          (pDet.dendaPaidMonths &&
+                                            pDet.dendaPaidMonths.length > 0 &&
+                                            pDet.dendaPaidMonths.every((m) => {
+                                              const mk = parseIndonesianMonthYearToKey(m);
+                                              return Boolean(mk && pDet.pKey && mk < pDet.pKey);
+                                            })));
+                                      const hasDendaPaid = pDet.dendaPaid > 0;
+                                      const hasLaterSettle = Boolean(pDet.isDendaSettledLater);
+                                      const hasUnpaidFine = !hasLaterSettle && Boolean(pDet.baksosFineUnpaid && pDet.baksosFineUnpaid > 0);
+                                      return (
+                                        <>
+                                          {hasDendaPaid && (
+                                            <div className="w-full mt-1 px-1.5 py-0.5 rounded-md bg-teal-100/90 text-teal-950 border border-teal-300 flex flex-col items-center text-[10px] shadow-2xs">
+                                              <span className="font-mono font-black text-teal-800 whitespace-normal break-words text-center">
+                                                +Denda {formatRupiah(pDet.dendaPaid)}
+                                              </span>
+                                              <span className="text-[8.5px] font-extrabold text-teal-800 text-center leading-tight whitespace-normal break-words">
+                                                {isPastBaksosPayment
+                                                  ? `Pelunasan Tunggakan Baksos`
+                                                  : `✓ Denda Baksos Lunas`}
+                                              </span>
+                                              <span className="text-[8px] font-bold text-teal-900 text-center leading-tight whitespace-normal break-words">
+                                                (Bulan: {pDet.dendaDetailNote || pDet.periodLabel})
+                                              </span>
+                                            </div>
+                                          )}
+                                          {hasLaterSettle && (
+                                            <div className="w-full mt-1 px-1.5 py-0.5 rounded-md bg-teal-100/90 text-teal-950 border border-teal-300 flex flex-col items-center text-[9.5px] shadow-2xs">
+                                              <span className="font-extrabold text-teal-900 text-center leading-tight whitespace-normal break-words">
+                                                ✓ Lunas di Bulan {pDet.dendaSettlementMonth || 'Berikutnya'}
+                                              </span>
+                                              <span className="text-[8px] font-semibold text-teal-700 text-center leading-tight whitespace-normal break-words">
+                                                (Denda Baksos {pDet.periodLabel})
+                                              </span>
+                                            </div>
+                                          )}
+                                          {hasUnpaidFine && (
+                                            <div className="w-full mt-1 px-1 py-0.5 rounded-md bg-rose-100 text-rose-900 border border-rose-300 flex flex-col items-center text-[8.5px] shadow-2xs font-bold">
+                                              <span className="whitespace-normal break-words text-center">Absen Baksos</span>
+                                              <span className="text-rose-800 font-extrabold whitespace-normal break-words text-center">
+                                                Denda {formatRupiah(pDet.baksosFineUnpaid || 0)} Belum Bayar
+                                              </span>
+                                            </div>
+                                          )}
+                                          {!hasDendaPaid && !hasLaterSettle && !hasUnpaidFine && pDet.baksosAttendance === 'Hadir' && (
+                                            <span className="inline-block mt-0.5 px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-900 border border-emerald-300 text-[8.5px] font-bold text-center whitespace-normal break-words">
+                                              ✓ Hadir Baksos
+                                            </span>
+                                          )}
+                                          {!hasDendaPaid && !hasLaterSettle && !hasUnpaidFine && pDet.baksosAttendance === 'Tidak Wajib' && (
+                                            <span className="inline-block mt-0.5 px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 border border-slate-300 text-[8.5px] font-semibold text-center whitespace-normal break-words">
+                                              Tidak Wajib Baksos
+                                            </span>
+                                          )}
+                                        </>
+                                      );
+                                    })()}
                                   </div>
                                 ) : (pDet.iuranPaid > 0 || pDet.tunggakanPaid > 0 || pDet.isLunasThisPeriod) ? (
                                   <div className="flex flex-col items-center gap-0.5">
@@ -6929,43 +7001,67 @@ export const CashReportSection: React.FC<CashReportSectionProps> = ({
                                       </div>
                                     )}
                                     {/* Denda Baksos */}
-                                    {pDet.dendaPaid > 0 ? (
-                                      <div className="w-full mt-1 px-1.5 py-0.5 rounded-md bg-teal-100/90 text-teal-950 border border-teal-300 flex flex-col items-center text-[10px] shadow-2xs">
-                                        <span className="font-mono font-black text-teal-800 whitespace-normal break-words text-center">
-                                          +Denda {formatRupiah(pDet.dendaPaid)}
-                                        </span>
-                                        <span className="text-[8.5px] font-extrabold text-teal-800 text-center leading-tight whitespace-normal break-words">
-                                          ✓ Denda Baksos Lunas
-                                        </span>
-                                        <span className="text-[8px] font-bold text-teal-900 text-center leading-tight whitespace-normal break-words">
-                                          (Bulan: {pDet.dendaDetailNote || pDet.periodLabel})
-                                        </span>
-                                      </div>
-                                    ) : pDet.isDendaSettledLater ? (
-                                      <div className="w-full mt-1 px-1.5 py-0.5 rounded-md bg-teal-100/90 text-teal-950 border border-teal-300 flex flex-col items-center text-[9.5px] shadow-2xs">
-                                        <span className="font-extrabold text-teal-900 text-center leading-tight">
-                                          ✓ Denda Lunas di {pDet.dendaSettlementMonth || 'Bulan Berikutnya'}
-                                        </span>
-                                        <span className="text-[8px] font-semibold text-teal-700">
-                                          (Pelunasan Denda)
-                                        </span>
-                                      </div>
-                                    ) : pDet.baksosFineUnpaid && pDet.baksosFineUnpaid > 0 ? (
-                                      <div className="w-full mt-1 px-1 py-0.5 rounded-md bg-rose-100 text-rose-900 border border-rose-300 flex flex-col items-center text-[8.5px] shadow-2xs font-bold">
-                                        <span>Absen Baksos</span>
-                                        <span className="text-rose-800 font-extrabold">
-                                          Denda {formatRupiah(pDet.baksosFineUnpaid)} Belum Bayar
-                                        </span>
-                                      </div>
-                                    ) : pDet.baksosAttendance === 'Hadir' ? (
-                                      <span className="inline-block mt-0.5 px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-900 border border-emerald-300 text-[8.5px] font-bold text-center">
-                                        ✓ Hadir Baksos
-                                      </span>
-                                    ) : pDet.baksosAttendance === 'Tidak Wajib' ? (
-                                      <span className="inline-block mt-0.5 px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 border border-slate-300 text-[8.5px] font-semibold text-center">
-                                        Tidak Wajib Baksos
-                                      </span>
-                                    ) : null}
+                                    {(() => {
+                                      const isPastBaksosPayment =
+                                        pDet.dendaPaid > 0 &&
+                                        (pDet.isDendaSettledLater ||
+                                          (pDet.dendaPaidMonths &&
+                                            pDet.dendaPaidMonths.length > 0 &&
+                                            pDet.dendaPaidMonths.every((m) => {
+                                              const mk = parseIndonesianMonthYearToKey(m);
+                                              return Boolean(mk && pDet.pKey && mk < pDet.pKey);
+                                            })));
+                                      const hasDendaPaid = pDet.dendaPaid > 0;
+                                      const hasLaterSettle = Boolean(pDet.isDendaSettledLater);
+                                      const hasUnpaidFine = !hasLaterSettle && Boolean(pDet.baksosFineUnpaid && pDet.baksosFineUnpaid > 0);
+                                      return (
+                                        <>
+                                          {hasDendaPaid && (
+                                            <div className="w-full mt-1 px-1.5 py-0.5 rounded-md bg-teal-100/90 text-teal-950 border border-teal-300 flex flex-col items-center text-[10px] shadow-2xs">
+                                              <span className="font-mono font-black text-teal-800 whitespace-normal break-words text-center">
+                                                +Denda {formatRupiah(pDet.dendaPaid)}
+                                              </span>
+                                              <span className="text-[8.5px] font-extrabold text-teal-800 text-center leading-tight whitespace-normal break-words">
+                                                {isPastBaksosPayment
+                                                  ? `Pelunasan Tunggakan Baksos`
+                                                  : `✓ Denda Baksos Lunas`}
+                                              </span>
+                                              <span className="text-[8px] font-bold text-teal-900 text-center leading-tight whitespace-normal break-words">
+                                                (Bulan: {pDet.dendaDetailNote || pDet.periodLabel})
+                                              </span>
+                                            </div>
+                                          )}
+                                          {hasLaterSettle && (
+                                            <div className="w-full mt-1 px-1.5 py-0.5 rounded-md bg-teal-100/90 text-teal-950 border border-teal-300 flex flex-col items-center text-[9.5px] shadow-2xs">
+                                              <span className="font-extrabold text-teal-900 text-center leading-tight whitespace-normal break-words">
+                                                ✓ Lunas di Bulan {pDet.dendaSettlementMonth || 'Berikutnya'}
+                                              </span>
+                                              <span className="text-[8px] font-semibold text-teal-700 text-center leading-tight whitespace-normal break-words">
+                                                (Denda Baksos {pDet.periodLabel})
+                                              </span>
+                                            </div>
+                                          )}
+                                          {hasUnpaidFine && (
+                                            <div className="w-full mt-1 px-1 py-0.5 rounded-md bg-rose-100 text-rose-900 border border-rose-300 flex flex-col items-center text-[8.5px] shadow-2xs font-bold">
+                                              <span className="whitespace-normal break-words text-center">Absen Baksos</span>
+                                              <span className="text-rose-800 font-extrabold whitespace-normal break-words text-center">
+                                                Denda {formatRupiah(pDet.baksosFineUnpaid || 0)} Belum Bayar
+                                              </span>
+                                            </div>
+                                          )}
+                                          {!hasDendaPaid && !hasLaterSettle && !hasUnpaidFine && pDet.baksosAttendance === 'Hadir' && (
+                                            <span className="inline-block mt-0.5 px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-900 border border-emerald-300 text-[8.5px] font-bold text-center whitespace-normal break-words">
+                                              ✓ Hadir Baksos
+                                            </span>
+                                          )}
+                                          {!hasDendaPaid && !hasLaterSettle && !hasUnpaidFine && pDet.baksosAttendance === 'Tidak Wajib' && (
+                                            <span className="inline-block mt-0.5 px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 border border-slate-300 text-[8.5px] font-semibold text-center whitespace-normal break-words">
+                                              Tidak Wajib Baksos
+                                            </span>
+                                          )}
+                                        </>
+                                      );
+                                    })()}
                                   </div>
                                 ) : (
                                   <div className="flex flex-col items-center gap-0.5">
@@ -6984,43 +7080,67 @@ export const CashReportSection: React.FC<CashReportSectionProps> = ({
                                       </div>
                                     )}
                                     {/* Denda Baksos */}
-                                    {pDet.dendaPaid > 0 ? (
-                                      <div className="w-full mt-1 px-1.5 py-0.5 rounded-md bg-teal-100/90 text-teal-950 border border-teal-300 flex flex-col items-center text-[10px] shadow-2xs">
-                                        <span className="font-mono font-black text-teal-800 whitespace-normal break-words text-center">
-                                          +Denda {formatRupiah(pDet.dendaPaid)}
-                                        </span>
-                                        <span className="text-[8.5px] font-extrabold text-teal-800 text-center leading-tight whitespace-normal break-words">
-                                          ✓ Denda Baksos Lunas
-                                        </span>
-                                        <span className="text-[8px] font-bold text-teal-900 text-center leading-tight whitespace-normal break-words">
-                                          (Bulan: {pDet.dendaDetailNote || pDet.periodLabel})
-                                        </span>
-                                      </div>
-                                    ) : pDet.isDendaSettledLater ? (
-                                      <div className="w-full mt-1 px-1.5 py-0.5 rounded-md bg-teal-100/90 text-teal-950 border border-teal-300 flex flex-col items-center text-[9.5px] shadow-2xs">
-                                        <span className="font-extrabold text-teal-900 text-center leading-tight">
-                                          ✓ Denda Lunas di {pDet.dendaSettlementMonth || 'Bulan Berikutnya'}
-                                        </span>
-                                        <span className="text-[8px] font-semibold text-teal-700">
-                                          (Pelunasan Denda)
-                                        </span>
-                                      </div>
-                                    ) : pDet.baksosFineUnpaid && pDet.baksosFineUnpaid > 0 ? (
-                                      <div className="w-full mt-1 px-1 py-0.5 rounded-md bg-rose-100 text-rose-900 border border-rose-300 flex flex-col items-center text-[8.5px] shadow-2xs font-bold">
-                                        <span>Absen Baksos</span>
-                                        <span className="text-rose-800 font-extrabold">
-                                          +Denda Baksos {formatRupiah(pDet.baksosFineUnpaid)}
-                                        </span>
-                                      </div>
-                                    ) : pDet.baksosAttendance === 'Hadir' ? (
-                                      <span className="inline-block mt-0.5 px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-900 border border-emerald-300 text-[8.5px] font-bold text-center">
-                                        ✓ Hadir Baksos
-                                      </span>
-                                    ) : pDet.baksosAttendance === 'Tidak Wajib' ? (
-                                      <span className="inline-block mt-0.5 px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 border border-slate-300 text-[8.5px] font-semibold text-center">
-                                        Tidak Wajib Baksos
-                                      </span>
-                                    ) : null}
+                                    {(() => {
+                                      const isPastBaksosPayment =
+                                        pDet.dendaPaid > 0 &&
+                                        (pDet.isDendaSettledLater ||
+                                          (pDet.dendaPaidMonths &&
+                                            pDet.dendaPaidMonths.length > 0 &&
+                                            pDet.dendaPaidMonths.every((m) => {
+                                              const mk = parseIndonesianMonthYearToKey(m);
+                                              return Boolean(mk && pDet.pKey && mk < pDet.pKey);
+                                            })));
+                                      const hasDendaPaid = pDet.dendaPaid > 0;
+                                      const hasLaterSettle = Boolean(pDet.isDendaSettledLater);
+                                      const hasUnpaidFine = !hasLaterSettle && Boolean(pDet.baksosFineUnpaid && pDet.baksosFineUnpaid > 0);
+                                      return (
+                                        <>
+                                          {hasDendaPaid && (
+                                            <div className="w-full mt-1 px-1.5 py-0.5 rounded-md bg-teal-100/90 text-teal-950 border border-teal-300 flex flex-col items-center text-[10px] shadow-2xs">
+                                              <span className="font-mono font-black text-teal-800 whitespace-normal break-words text-center">
+                                                +Denda {formatRupiah(pDet.dendaPaid)}
+                                              </span>
+                                              <span className="text-[8.5px] font-extrabold text-teal-800 text-center leading-tight whitespace-normal break-words">
+                                                {isPastBaksosPayment
+                                                  ? `Pelunasan Tunggakan Baksos`
+                                                  : `✓ Denda Baksos Lunas`}
+                                              </span>
+                                              <span className="text-[8px] font-bold text-teal-900 text-center leading-tight whitespace-normal break-words">
+                                                (Bulan: {pDet.dendaDetailNote || pDet.periodLabel})
+                                              </span>
+                                            </div>
+                                          )}
+                                          {hasLaterSettle && (
+                                            <div className="w-full mt-1 px-1.5 py-0.5 rounded-md bg-teal-100/90 text-teal-950 border border-teal-300 flex flex-col items-center text-[9.5px] shadow-2xs">
+                                              <span className="font-extrabold text-teal-900 text-center leading-tight whitespace-normal break-words">
+                                                ✓ Lunas di Bulan {pDet.dendaSettlementMonth || 'Berikutnya'}
+                                              </span>
+                                              <span className="text-[8px] font-semibold text-teal-700 text-center leading-tight whitespace-normal break-words">
+                                                (Denda Baksos {pDet.periodLabel})
+                                              </span>
+                                            </div>
+                                          )}
+                                          {hasUnpaidFine && (
+                                            <div className="w-full mt-1 px-1 py-0.5 rounded-md bg-rose-100 text-rose-900 border border-rose-300 flex flex-col items-center text-[8.5px] shadow-2xs font-bold">
+                                              <span className="whitespace-normal break-words text-center">Absen Baksos</span>
+                                              <span className="text-rose-800 font-extrabold whitespace-normal break-words text-center">
+                                                +Denda Baksos {formatRupiah(pDet.baksosFineUnpaid || 0)}
+                                              </span>
+                                            </div>
+                                          )}
+                                          {!hasDendaPaid && !hasLaterSettle && !hasUnpaidFine && pDet.baksosAttendance === 'Hadir' && (
+                                            <span className="inline-block mt-0.5 px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-900 border border-emerald-300 text-[8.5px] font-bold text-center whitespace-normal break-words">
+                                              ✓ Hadir Baksos
+                                            </span>
+                                          )}
+                                          {!hasDendaPaid && !hasLaterSettle && !hasUnpaidFine && pDet.baksosAttendance === 'Tidak Wajib' && (
+                                            <span className="inline-block mt-0.5 px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 border border-slate-300 text-[8.5px] font-semibold text-center whitespace-normal break-words">
+                                              Tidak Wajib Baksos
+                                            </span>
+                                          )}
+                                        </>
+                                      );
+                                    })()}
                                   </div>
                                 )}
                               </td>
@@ -7306,29 +7426,50 @@ export const CashReportSection: React.FC<CashReportSectionProps> = ({
                             )}
                           </td>
                           <td className="py-2.5 px-3 text-right font-mono text-cyan-800">
-                            {p.dendaPaid > 0 ? (
-                              <div className="flex flex-col items-end">
-                                <span>+{formatRupiah(p.dendaPaid)}</span>
-                                <span className="text-[9px] font-sans font-semibold text-teal-700">
-                                  Lunas (Bulan: {p.dendaDetailNote || p.periodLabel})
-                                </span>
-                              </div>
-                            ) : p.isDendaSettledLater ? (
-                              <span className="text-teal-700 font-bold font-sans text-[11px]">
-                                ✓ Lunas Bulan {p.dendaSettlementMonth || 'Berikutnya'}
-                              </span>
-                            ) : (p.baksosFineUnpaid || 0) > 0 ? (
-                              <div className="flex flex-col items-end">
-                                <span className="text-rose-700 font-bold">
-                                  {formatRupiah(p.baksosFineUnpaid || 0)}
-                                </span>
-                                <span className="text-[9px] font-sans font-bold text-rose-600">
-                                  Belum Bayar ({p.periodLabel})
-                                </span>
-                              </div>
-                            ) : (
-                              'Rp 0'
-                            )}
+                            {(() => {
+                              const isPastBaksosPayment =
+                                p.dendaPaid > 0 &&
+                                (p.isDendaSettledLater ||
+                                  (p.dendaPaidMonths &&
+                                    p.dendaPaidMonths.length > 0 &&
+                                    p.dendaPaidMonths.every((m) => {
+                                      const mk = parseIndonesianMonthYearToKey(m);
+                                      return Boolean(mk && p.pKey && mk < p.pKey);
+                                    })));
+                              const hasPaid = p.dendaPaid > 0;
+                              const hasLater = Boolean(p.isDendaSettledLater);
+                              const hasUnpaid = !hasLater && (p.baksosFineUnpaid || 0) > 0;
+                              if (!hasPaid && !hasLater && !hasUnpaid) return 'Rp 0';
+                              return (
+                                <div className="flex flex-col items-end gap-1">
+                                  {hasPaid && (
+                                    <div className="flex flex-col items-end">
+                                      <span>+{formatRupiah(p.dendaPaid)}</span>
+                                      <span className="text-[9px] font-sans font-semibold text-teal-700">
+                                        {isPastBaksosPayment
+                                          ? `Pelunasan Tunggakan Baksos (${p.dendaDetailNote || 'Sebelumnya'})`
+                                          : `Lunas (Bulan: ${p.dendaDetailNote || p.periodLabel})`}
+                                      </span>
+                                    </div>
+                                  )}
+                                  {hasLater && (
+                                    <span className="text-teal-700 font-bold font-sans text-[10px]">
+                                      ✓ Baksos {p.periodLabel} Lunas di Bulan {p.dendaSettlementMonth || 'Berikutnya'}
+                                    </span>
+                                  )}
+                                  {hasUnpaid && (
+                                    <div className="flex flex-col items-end">
+                                      <span className="text-rose-700 font-bold">
+                                        {formatRupiah(p.baksosFineUnpaid || 0)}
+                                      </span>
+                                      <span className="text-[9px] font-sans font-bold text-rose-600">
+                                        Belum Bayar ({p.periodLabel})
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })()}
                           </td>
                           <td className="py-2.5 px-3 text-right font-mono text-amber-800">
                             {p.tunggakanPaid > 0 ? `+${formatRupiah(p.tunggakanPaid)}` : 'Rp 0'}
