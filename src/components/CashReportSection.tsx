@@ -1159,7 +1159,7 @@ export const CashReportSection: React.FC<CashReportSectionProps> = ({
         } else if (info.status === 'Bayar Lebih') {
           bayarLebihCount++;
           totalAmount += info.amount;
-        } else if (info.status === 'Lunas') {
+        } else if (info.status === 'Lunas' && !info.isArrearSettledLater) {
           lunasCount++;
           totalAmount += info.amount;
         } else {
@@ -1235,8 +1235,11 @@ export const CashReportSection: React.FC<CashReportSectionProps> = ({
             // Cocokkan baik bulan awal bayar lebih maupun bulan lanjutan yang tercakup pembayaran di muka
             if (pStatus.status !== 'Bayar Lebih' && !pStatus.isAdvanceSubsequentMonth) return false;
           } else if (duesFilter === 'Lunas') {
-            // Rumah yang bayar di muka juga termasuk status Lunas
+            // Rumah yang bayar di muka juga termasuk status Lunas; tunggakan yang dilunasi di bulan berikutnya tidak ditandai Lunas di bulan tertunggak
+            if (pStatus.isArrearSettledLater) return false;
             if (pStatus.status !== 'Lunas' && pStatus.status !== 'Bayar Lebih' && !pStatus.isAdvanceSubsequentMonth) return false;
+          } else if (duesFilter === 'Belum Bayar') {
+            if (pStatus.status !== 'Belum Bayar' && !pStatus.isArrearSettledLater) return false;
           } else {
             if (pStatus.status !== duesFilter) return false;
           }
@@ -1318,7 +1321,7 @@ export const CashReportSection: React.FC<CashReportSectionProps> = ({
       const iuranPaid = isPureKosong
         ? (statusInfo && statusInfo.status === 'Lunas' ? (statusInfo.amount || 0) : 0)
         : statusInfo
-        ? statusInfo.isAdvanceSubsequentMonth
+        ? statusInfo.isAdvanceSubsequentMonth || statusInfo.isArrearSettledLater
           ? 0
           : statusInfo.status === 'Lunas' || statusInfo.status === 'Bayar Lebih'
           ? (statusInfo.amount !== undefined ? statusInfo.amount : nominal)
@@ -1361,6 +1364,8 @@ export const CashReportSection: React.FC<CashReportSectionProps> = ({
       const paidDate =
         (tunggakanPaid > 0 && tunggakanTxs.length > 0)
           ? tunggakanTxs[0].date
+          : isArrearSettledLater
+          ? ''
           : statusInfo?.paidDate ||
             house.duesPaidDate ||
             (tunggakanTxs.length > 0 ? tunggakanTxs[0].date : '');
@@ -1382,13 +1387,14 @@ export const CashReportSection: React.FC<CashReportSectionProps> = ({
         !isNeutralKosong &&
         !isBayarLebih &&
         !isAdvanceSubsequent &&
+        !isArrearSettledLater &&
         (statusInfo
-          ? statusInfo.status === 'Lunas' || (statusInfo.amount || 0) > 0 || isArrearSettledLater
+          ? statusInfo.status === 'Lunas' || (statusInfo.amount || 0) > 0
           : selectedKKPeriod === 'semua'
           ? isLunas || iuranPaid > 0
           : iuranPaid > 0);
 
-      const isMenunggak = !isRumahKosongHitam && !isNeutralKosong && !isBayarLebih && !isAdvanceSubsequent && !isArrearSettledLater && !isSudahBayar;
+      const isMenunggak = !isRumahKosongHitam && !isNeutralKosong && !isBayarLebih && !isAdvanceSubsequent && !isSudahBayar;
 
       const rowCellClass = isRumahKosongHitam
         ? '!bg-black !text-white border-neutral-800 font-medium'
@@ -1396,7 +1402,7 @@ export const CashReportSection: React.FC<CashReportSectionProps> = ({
         ? 'bg-slate-100/80 text-slate-700 border-slate-200/90 font-medium'
         : isBayarLebih
         ? 'bg-sky-50/70 text-sky-950 border-sky-200/80 font-medium'
-        : isAdvanceSubsequent || isArrearSettledLater
+        : isAdvanceSubsequent
         ? 'bg-emerald-50/70 text-emerald-950 border-emerald-200/80 font-medium'
         : isSudahBayar
         ? 'bg-emerald-50/40 text-emerald-950 border-emerald-200/80 font-medium'
@@ -5896,7 +5902,7 @@ export const CashReportSection: React.FC<CashReportSectionProps> = ({
                                 ? 'bg-slate-100/70 text-slate-700 border-slate-200 hover:bg-slate-100'
                                 : isBayarLebih
                                 ? 'bg-sky-50/60 text-slate-900 border-sky-200/70 hover:bg-sky-100/50'
-                                : isAdvanceSubsequent || isArrearSettledLater
+                                : isAdvanceSubsequent
                                 ? 'bg-emerald-50/60 text-slate-900 border-emerald-200/70 hover:bg-emerald-100/50'
                                 : isSudahBayar
                                 ? 'bg-emerald-50/30 text-slate-900 border-emerald-200/60 hover:bg-emerald-50/60'
@@ -5920,7 +5926,7 @@ export const CashReportSection: React.FC<CashReportSectionProps> = ({
                                     ? 'bg-slate-200 text-slate-800 border-slate-300'
                                     : isBayarLebih
                                     ? 'bg-sky-100 text-sky-950 border-sky-300 ring-1 ring-sky-300/60'
-                                    : isAdvanceSubsequent || isArrearSettledLater
+                                    : isAdvanceSubsequent
                                     ? 'bg-emerald-100 text-emerald-950 border-emerald-300'
                                     : isSudahBayar
                                     ? 'bg-emerald-100 text-emerald-950 border-emerald-300'
@@ -5944,7 +5950,7 @@ export const CashReportSection: React.FC<CashReportSectionProps> = ({
                                           ? 'text-slate-700 italic'
                                           : isBayarLebih
                                           ? 'text-sky-950 font-black'
-                                          : isAdvanceSubsequent || isArrearSettledLater || isSudahBayar
+                                          : isAdvanceSubsequent || isSudahBayar
                                           ? 'text-emerald-950'
                                           : 'text-rose-950'
                                       }`}
@@ -5960,12 +5966,6 @@ export const CashReportSection: React.FC<CashReportSectionProps> = ({
                                       <span className={`inline-flex items-center gap-1 ${kkViewFit ? 'text-[9px]' : 'text-[11px]'} font-semibold text-emerald-800 mt-0.5`}>
                                         <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
                                         <span>Lunas via Pembayaran di Bulan {basePaymentMonth}</span>
-                                      </span>
-                                    )}
-                                    {isArrearSettledLater && (
-                                      <span className={`inline-flex items-center gap-1 ${kkViewFit ? 'text-[9px]' : 'text-[11px]'} font-semibold text-emerald-800 mt-0.5`}>
-                                        <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
-                                        <span>Lunas di Bulan {settlementMonth || 'Lalu'} (Pelunasan Tunggakan)</span>
                                       </span>
                                     )}
                                   </div>
@@ -5999,11 +5999,6 @@ export const CashReportSection: React.FC<CashReportSectionProps> = ({
                                     Lunas di {basePaymentMonth}
                                   </span>
                                 )}
-                                {isArrearSettledLater && (
-                                  <span className="text-[9px] text-emerald-800 font-semibold mt-0.5">
-                                    Lunas di {settlementMonth}
-                                  </span>
-                                )}
                               </div>
                             </td>
 
@@ -6013,7 +6008,7 @@ export const CashReportSection: React.FC<CashReportSectionProps> = ({
                               className={`${kkViewFit ? 'py-1 px-2.5' : 'py-3 px-4'} text-right font-mono tabular-nums border-r border-slate-200/60 ${
                                 isAdmin ? 'cursor-pointer hover:bg-emerald-100/40 transition-colors' : ''
                               }`}
-                              title={isAdmin ? (isAdvanceSubsequent ? `Iuran periode ini lunas dibayar di muka pada bulan ${basePaymentMonth}. Klik untuk edit.` : isArrearSettledLater ? `Iuran periode ini lunas dibayar via pelunasan tunggakan pada bulan ${settlementMonth}. Klik untuk edit.` : 'Klik untuk edit Iuran Bulanan KK ini') : ''}
+                              title={isAdmin ? (isAdvanceSubsequent ? `Iuran periode ini lunas dibayar di muka pada bulan ${basePaymentMonth}. Klik untuk edit.` : 'Klik untuk edit Iuran Bulanan KK ini') : ''}
                             >
                               <div className="flex items-center justify-end">
                                 {isNeutralKosong ? (
@@ -6028,18 +6023,6 @@ export const CashReportSection: React.FC<CashReportSectionProps> = ({
                                     </span>
                                     <span className="text-[9px] text-emerald-800 font-medium mt-0.5 whitespace-nowrap">
                                       (Bayar &gt;1 Bln di {basePaymentMonth})
-                                    </span>
-                                  </div>
-                                ) : isArrearSettledLater ? (
-                                  <div className="flex flex-col items-end">
-                                    <span className={`inline-flex items-center gap-1 font-sans font-bold text-emerald-950 bg-emerald-100/90 rounded-md border border-emerald-300 shadow-2xs whitespace-nowrap ${
-                                      kkViewFit ? 'text-[10px] px-1.5 py-0.5' : 'text-xs px-2.5 py-1'
-                                    }`}>
-                                      <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
-                                      <span>Lunas di Bulan {settlementMonth}</span>
-                                    </span>
-                                    <span className="text-[9px] text-emerald-800 font-medium mt-0.5 whitespace-nowrap">
-                                      (Pelunasan Tunggakan)
                                     </span>
                                   </div>
                                 ) : isBayarLebih ? (
@@ -6081,15 +6064,6 @@ export const CashReportSection: React.FC<CashReportSectionProps> = ({
                                     </span>
                                     <span className="text-[9px] text-emerald-700 font-medium mt-0.5">
                                       ✓ Denda Lunas
-                                    </span>
-                                  </div>
-                                ) : baksosInfo.isDendaSettledLater ? (
-                                  <div className="flex flex-col items-end">
-                                    <span className="px-1.5 py-0.5 rounded bg-teal-100 text-teal-900 border border-teal-300 font-extrabold text-[10px] whitespace-nowrap">
-                                      ✓ Lunas Bulan {baksosInfo.dendaSettlementMonth || 'Berikutnya'}
-                                    </span>
-                                    <span className="text-[9px] text-teal-700 font-medium mt-0.5">
-                                      (Pelunasan Denda)
                                     </span>
                                   </div>
                                 ) : baksosInfo.dendaUnpaid > 0 || (selectedKKPeriod === 'semua' && (row.overallRecap?.baksosFineArrears || 0) > 0) ? (
@@ -6214,10 +6188,6 @@ export const CashReportSection: React.FC<CashReportSectionProps> = ({
                                 <span className="text-[10px] font-semibold text-emerald-800">
                                   Lunas di {basePaymentMonth}
                                 </span>
-                              ) : isArrearSettledLater ? (
-                                <span className="text-[10px] font-semibold text-emerald-800">
-                                  Lunas di {settlementMonth}
-                                </span>
                               ) : (
                                 <span className="text-slate-400 font-mono text-[11px]">-</span>
                               )}
@@ -6271,29 +6241,6 @@ export const CashReportSection: React.FC<CashReportSectionProps> = ({
                                         </span>
                                         <span className="text-[9px] text-emerald-800 font-medium mt-0.5 whitespace-nowrap">
                                           (Bayar &gt;1 Bln di {basePaymentMonth})
-                                        </span>
-                                      </div>
-                                    )
-                                  ) : isArrearSettledLater ? (
-                                    totalSemua > 0 ? (
-                                      <>
-                                        <span className={`font-mono font-black text-emerald-950 ${kkViewFit ? 'text-[11px]' : 'text-xs sm:text-sm'}`}>
-                                          +{formatRupiah(totalSemua)}
-                                        </span>
-                                        <span className="text-[9px] font-sans text-emerald-800 font-semibold mt-0.5 whitespace-nowrap">
-                                          (Lunas Tunggakan di {settlementMonth})
-                                        </span>
-                                      </>
-                                    ) : (
-                                      <div className="flex flex-col items-end">
-                                        <span className={`inline-flex items-center gap-1 font-sans font-bold text-emerald-950 bg-emerald-100/90 rounded-md border border-emerald-300 shadow-2xs whitespace-nowrap ${
-                                          kkViewFit ? 'text-[10px] px-1.5 py-0.5' : 'text-xs px-2.5 py-1'
-                                        }`}>
-                                          <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
-                                          <span>Lunas di Bulan {settlementMonth}</span>
-                                        </span>
-                                        <span className="text-[9px] text-emerald-800 font-medium mt-0.5 whitespace-nowrap">
-                                          (Pelunasan Tunggakan)
                                         </span>
                                       </div>
                                     )
@@ -6819,11 +6766,14 @@ export const CashReportSection: React.FC<CashReportSectionProps> = ({
                                     {/* Denda Baksos */}
                                     {pDet.dendaPaid > 0 ? (
                                       <div className="w-full mt-1 px-1.5 py-0.5 rounded-md bg-teal-100/90 text-teal-950 border border-teal-300 flex flex-col items-center text-[10px] shadow-2xs">
-                                        <span className="font-mono font-black text-teal-800">
+                                        <span className="font-mono font-black text-teal-800 whitespace-normal break-words text-center">
                                           +Denda {formatRupiah(pDet.dendaPaid)}
                                         </span>
-                                        <span className="text-[8.5px] font-extrabold text-teal-800">
+                                        <span className="text-[8.5px] font-extrabold text-teal-800 text-center leading-tight whitespace-normal break-words">
                                           ✓ Denda Baksos Lunas
+                                        </span>
+                                        <span className="text-[8px] font-bold text-teal-900 text-center leading-tight whitespace-normal break-words">
+                                          (Bulan: {pDet.dendaDetailNote || pDet.periodLabel})
                                         </span>
                                       </div>
                                     ) : pDet.isDendaSettledLater ? (
@@ -6874,11 +6824,14 @@ export const CashReportSection: React.FC<CashReportSectionProps> = ({
                                     {/* Denda Baksos */}
                                     {pDet.dendaPaid > 0 ? (
                                       <div className="w-full mt-1 px-1.5 py-0.5 rounded-md bg-teal-100/90 text-teal-950 border border-teal-300 flex flex-col items-center text-[10px] shadow-2xs">
-                                        <span className="font-mono font-black text-teal-800">
+                                        <span className="font-mono font-black text-teal-800 whitespace-normal break-words text-center">
                                           +Denda {formatRupiah(pDet.dendaPaid)}
                                         </span>
-                                        <span className="text-[8.5px] font-extrabold text-teal-800">
+                                        <span className="text-[8.5px] font-extrabold text-teal-800 text-center leading-tight whitespace-normal break-words">
                                           ✓ Denda Baksos Lunas
+                                        </span>
+                                        <span className="text-[8px] font-bold text-teal-900 text-center leading-tight whitespace-normal break-words">
+                                          (Bulan: {pDet.dendaDetailNote || pDet.periodLabel})
                                         </span>
                                       </div>
                                     ) : pDet.isDendaSettledLater ? (
@@ -6918,11 +6871,14 @@ export const CashReportSection: React.FC<CashReportSectionProps> = ({
                                     {/* Denda Baksos */}
                                     {pDet.dendaPaid > 0 ? (
                                       <div className="w-full mt-1 px-1.5 py-0.5 rounded-md bg-teal-100/90 text-teal-950 border border-teal-300 flex flex-col items-center text-[10px] shadow-2xs">
-                                        <span className="font-mono font-black text-teal-800">
+                                        <span className="font-mono font-black text-teal-800 whitespace-normal break-words text-center">
                                           +Denda {formatRupiah(pDet.dendaPaid)}
                                         </span>
-                                        <span className="text-[8.5px] font-extrabold text-teal-800">
+                                        <span className="text-[8.5px] font-extrabold text-teal-800 text-center leading-tight whitespace-normal break-words">
                                           ✓ Denda Baksos Lunas
+                                        </span>
+                                        <span className="text-[8px] font-bold text-teal-900 text-center leading-tight whitespace-normal break-words">
+                                          (Bulan: {pDet.dendaDetailNote || pDet.periodLabel})
                                         </span>
                                       </div>
                                     ) : pDet.isDendaSettledLater ? (
@@ -6975,11 +6931,14 @@ export const CashReportSection: React.FC<CashReportSectionProps> = ({
                                     {/* Denda Baksos */}
                                     {pDet.dendaPaid > 0 ? (
                                       <div className="w-full mt-1 px-1.5 py-0.5 rounded-md bg-teal-100/90 text-teal-950 border border-teal-300 flex flex-col items-center text-[10px] shadow-2xs">
-                                        <span className="font-mono font-black text-teal-800">
+                                        <span className="font-mono font-black text-teal-800 whitespace-normal break-words text-center">
                                           +Denda {formatRupiah(pDet.dendaPaid)}
                                         </span>
-                                        <span className="text-[8.5px] font-extrabold text-teal-800">
+                                        <span className="text-[8.5px] font-extrabold text-teal-800 text-center leading-tight whitespace-normal break-words">
                                           ✓ Denda Baksos Lunas
+                                        </span>
+                                        <span className="text-[8px] font-bold text-teal-900 text-center leading-tight whitespace-normal break-words">
+                                          (Bulan: {pDet.dendaDetailNote || pDet.periodLabel})
                                         </span>
                                       </div>
                                     ) : pDet.isDendaSettledLater ? (
@@ -7027,11 +6986,14 @@ export const CashReportSection: React.FC<CashReportSectionProps> = ({
                                     {/* Denda Baksos */}
                                     {pDet.dendaPaid > 0 ? (
                                       <div className="w-full mt-1 px-1.5 py-0.5 rounded-md bg-teal-100/90 text-teal-950 border border-teal-300 flex flex-col items-center text-[10px] shadow-2xs">
-                                        <span className="font-mono font-black text-teal-800">
+                                        <span className="font-mono font-black text-teal-800 whitespace-normal break-words text-center">
                                           +Denda {formatRupiah(pDet.dendaPaid)}
                                         </span>
-                                        <span className="text-[8.5px] font-extrabold text-teal-800">
+                                        <span className="text-[8.5px] font-extrabold text-teal-800 text-center leading-tight whitespace-normal break-words">
                                           ✓ Denda Baksos Lunas
+                                        </span>
+                                        <span className="text-[8px] font-bold text-teal-900 text-center leading-tight whitespace-normal break-words">
+                                          (Bulan: {pDet.dendaDetailNote || pDet.periodLabel})
                                         </span>
                                       </div>
                                     ) : pDet.isDendaSettledLater ? (
@@ -7348,7 +7310,7 @@ export const CashReportSection: React.FC<CashReportSectionProps> = ({
                               <div className="flex flex-col items-end">
                                 <span>+{formatRupiah(p.dendaPaid)}</span>
                                 <span className="text-[9px] font-sans font-semibold text-teal-700">
-                                  Lunas ({p.periodLabel})
+                                  Lunas (Bulan: {p.dendaDetailNote || p.periodLabel})
                                 </span>
                               </div>
                             ) : p.isDendaSettledLater ? (

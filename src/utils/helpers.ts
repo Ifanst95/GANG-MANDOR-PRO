@@ -2586,6 +2586,8 @@ export interface OverallKKRecapPeriodDetail {
   baksosFineUnpaid?: number;
   isDendaSettledLater?: boolean;
   dendaSettlementMonth?: string | null;
+  dendaDetailNote?: string;
+  dendaPaidMonths?: string[];
   tunggakanDetailNote?: string;
   tunggakanPaidMonths?: string[];
   baksosStatusLabel?: string;
@@ -2762,6 +2764,66 @@ export function computeOverallKKRecapList(
       // Denda Baksos Paid for this cell
       const dendaPaid = isPeriodVacant ? 0 : baksosInfo.dendaPaid;
 
+      // Extract detail bulan-bulan denda baksos yang dibayarkan pada periode ini
+      const dendaPaidMonths: string[] = [];
+      if (dendaPaid > 0) {
+        const pushDendaMonth = (label: string) => {
+          const cleanM = label.trim();
+          if (!cleanM) return;
+          if (!dendaPaidMonths.some((x) => x.toLowerCase() === cleanM.toLowerCase())) {
+            dendaPaidMonths.push(cleanM);
+          }
+        };
+
+        const dendaTxsThisPeriod = transactions.filter((t) => {
+          if (t.type !== 'masuk' || !isBaksosFineTx(t)) return false;
+          if (!isTransactionForHouse(t, house)) return false;
+          return getMonthKeyFromDate(t.date) === pKey;
+        });
+
+        dendaTxsThisPeriod.forEach((t) => {
+          const desc = t.description || '';
+          const monthRegex =
+            /(Januari|Februari|Maret|April|Mei|Juni|Juli|Agustus|September|Oktober|November|Desember)(?:\s+\d{4})?/gi;
+          const matches = desc.match(monthRegex);
+          if (matches) {
+            matches.forEach((m) => pushDendaMonth(m));
+          }
+        });
+
+        // Cek periode sebelumnya yang dendanya dilunasi pada periode ini
+        sortedPeriods.forEach((priorPeriod) => {
+          const priorKey = parseIndonesianMonthYearToKey(priorPeriod) || '';
+          if (priorKey && priorKey < pKey) {
+            const priorBaksos = getHouseBaksosForPeriod(
+              house,
+              priorPeriod,
+              baksosAgendas,
+              transactions,
+              residents
+            );
+            if (priorBaksos.isDendaSettledLater && priorBaksos.dendaSettlementMonth === periodLabel) {
+              pushDendaMonth(priorPeriod);
+            }
+          }
+        });
+
+        // Cek periodHistory secara langsung jika ada baksosSettlementMonth === periodLabel
+        if (house.periodHistory) {
+          Object.entries(house.periodHistory).forEach(([rawKey, snap]) => {
+            if (!snap || snap.baksosSettlementMonth !== periodLabel) return;
+            const mKey = parseIndonesianMonthYearToKey(rawKey);
+            const mLabel = (mKey ? formatMonthYearFromKey(mKey) : '') || rawKey;
+            pushDendaMonth(mLabel);
+          });
+        }
+
+        if (dendaPaidMonths.length === 0) {
+          pushDendaMonth(periodLabel);
+        }
+      }
+      const dendaDetailNote = dendaPaidMonths.join(', ');
+
       // Tunggakan Paid for this cell
       const tunggakanTxs = transactions.filter((t) => {
         if (t.type !== 'masuk' || !isTunggakanTx(t)) return false;
@@ -2921,6 +2983,8 @@ export function computeOverallKKRecapList(
         baksosFineUnpaid: isPeriodVacant ? 0 : baksosInfo.dendaUnpaid,
         isDendaSettledLater: Boolean(baksosInfo.isDendaSettledLater),
         dendaSettlementMonth: baksosInfo.dendaSettlementMonth || null,
+        dendaDetailNote,
+        dendaPaidMonths,
         baksosStatusLabel,
       };
     });
@@ -3153,19 +3217,74 @@ export function computeOverallKKRecapList(
           : baksosUnpaidMonths.join(', ')
         : manualBaksosNote || 'Bulan Lalu';
 
-    const baksosPaidMonthDetails = isPureKosong
-      ? []
-      : periodsDetail
-          .filter((p) => !p.isPeriodVacant && (p.dendaPaid > 0 || p.isDendaSettledLater))
-          .map((p) => ({
-            periodLabel: p.periodLabel,
-            pKey: p.pKey,
-            amount: p.dendaPaid,
-            isSettledLater: Boolean(p.isDendaSettledLater),
-            settlementMonth: p.dendaSettlementMonth || null,
-          }));
+    const paidBaksosMonthMap = new Map<
+      string,
+      {
+        periodLabel: string;
+        pKey: string;
+        amount: number;
+        isSettledLater: boolean;
+        settlementMonth: string | null;
+      }
+    >();
+
+    if (!isPureKosong) {
+      periodsDetail.forEach((p) => {
+        if (p.isPeriodVacant) return;
+        if (p.isDendaSettledLater) {
+          const mapKey = p.pKey || p.periodLabel.toLowerCase();
+          if (!paidBaksosMonthMap.has(mapKey)) {
+            paidBaksosMonthMap.set(mapKey, {
+              periodLabel: p.periodLabel,
+              pKey: p.pKey,
+              amount: p.dendaPaid,
+              isSettledLater: true,
+              settlementMonth: p.dendaSettlementMonth || null,
+            });
+          }
+        }
+        if (p.dendaPaid > 0) {
+          const monthsCovered =
+            p.dendaPaidMonths && p.dendaPaidMonths.length > 0
+              ? p.dendaPaidMonths
+              : [p.periodLabel];
+          monthsCovered.forEach((mLabel) => {
+            const mKey = parseIndonesianMonthYearToKey(mLabel) || '';
+            const normalizedLabel = mKey ? formatMonthYearFromKey(mKey) : mLabel;
+            const mapKey = mKey || normalizedLabel.toLowerCase();
+            const isDifferentPayMonth = normalizedLabel.toLowerCase() !== p.periodLabel.toLowerCase();
+            const existing = paidBaksosMonthMap.get(mapKey);
+            if (!existing) {
+              paidBaksosMonthMap.set(mapKey, {
+                periodLabel: normalizedLabel,
+                pKey: mKey || p.pKey,
+                amount: p.dendaPaid,
+                isSettledLater: isDifferentPayMonth,
+                settlementMonth: isDifferentPayMonth ? p.periodLabel : null,
+              });
+            } else {
+              existing.amount = Math.max(existing.amount, p.dendaPaid);
+              if (isDifferentPayMonth && !existing.settlementMonth) {
+                existing.isSettledLater = true;
+                existing.settlementMonth = p.periodLabel;
+              }
+            }
+          });
+        }
+      });
+    }
+
+    const baksosPaidMonthDetails = Array.from(paidBaksosMonthMap.values()).sort((a, b) =>
+      (a.pKey || a.periodLabel).localeCompare(b.pKey || b.periodLabel)
+    );
     const baksosPaidMonths = baksosPaidMonthDetails.map((d) => d.periodLabel);
-    const baksosPaidMonthsText = baksosPaidMonths.join(', ');
+    const baksosPaidMonthsText = baksosPaidMonthDetails
+      .map((d) =>
+        d.isSettledLater && d.settlementMonth && d.settlementMonth.toLowerCase() !== d.periodLabel.toLowerCase()
+          ? `${d.periodLabel} (Bayar: ${d.settlementMonth})`
+          : d.periodLabel
+      )
+      .join(', ');
 
     return {
       house,
